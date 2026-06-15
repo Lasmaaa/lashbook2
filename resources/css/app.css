@@ -50,6 +50,16 @@ body {
     filter: brightness(1.05);
 }
 
+.calendar-day {
+    transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+
+.calendar-day:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--accent)));
+    border-color: transparent;
+    color: #fff;
+}
+
 .text-muted {
     color: rgb(var(--muted-text));
 }

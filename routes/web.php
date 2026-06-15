@@ -47,6 +47,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/loyalty', [LoyaltyController::class, 'adminIndex'])->name('loyalty');
         Route::post('/loyalty/scan', [LoyaltyController::class, 'scan'])->name('loyalty.scan');
         Route::post('/loyalty/refresh', [LoyaltyController::class, 'refresh'])->name('loyalty.refresh');
+        Route::post('/procedures', [AdminController::class, 'updateProcedures'])->name('procedures.update');
         Route::get('/users', [AdminController::class, 'users'])->name('users');
         Route::post('/users/{user}/role', [AdminController::class, 'changeRole'])->name('users.role');
     });

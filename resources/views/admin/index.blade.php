@@ -26,5 +26,48 @@
             @endfor
         </div>
     </div>
+
+    <div class="mt-8 card p-6">
+        <h2 class="text-xl font-medium mb-4">Procedūru cenu tabula</h2>
+        @if(session('success'))
+            <div class="mb-4 rounded-2xl bg-emerald-100 p-4 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                {{ session('success') }}
+            </div>
+        @endif
+        <form method="POST" action="{{ route('admin.procedures.update') }}">
+            @csrf
+            <div class="grid gap-4">
+                <div class="grid grid-cols-12 gap-3 text-xs uppercase tracking-wide text-muted">
+                    <div class="col-span-2">Code</div>
+                    <div class="col-span-3">LV nosaukums</div>
+                    <div class="col-span-3">EN nosaukums</div>
+                    <div class="col-span-3">RU nosaukums</div>
+                    <div class="col-span-1 text-right">Cena</div>
+                </div>
+                @foreach($procedures as $procedure)
+                    <div class="grid grid-cols-12 gap-3 items-center rounded-2xl border p-3" style="border-color: rgb(var(--border));">
+                        <div class="col-span-2 text-sm font-semibold">{{ $procedure->code }}</div>
+                        <div class="col-span-3">
+                            <input type="text" name="procedures[{{ $procedure->id }}][name_lv]" value="{{ $procedure->name_lv }}" class="w-full rounded-2xl border p-3" style="border-color: rgb(var(--border));">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" name="procedures[{{ $procedure->id }}][name_en]" value="{{ $procedure->name_en }}" class="w-full rounded-2xl border p-3" style="border-color: rgb(var(--border));">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="text" name="procedures[{{ $procedure->id }}][name_ru]" value="{{ $procedure->name_ru }}" class="w-full rounded-2xl border p-3" style="border-color: rgb(var(--border));">
+                        </div>
+                        <div class="col-span-1">
+                            <input type="number" step="0.01" name="procedures[{{ $procedure->id }}][price]" value="{{ $procedure->price }}" class="w-full rounded-2xl border p-3 text-right" style="border-color: rgb(var(--border));">
+                        </div>
+                        <input type="hidden" name="procedures[{{ $procedure->id }}][code]" value="{{ $procedure->code }}">
+                    </div>
+                @endforeach
+            </div>
+
+            <button type="submit" class="mt-6 inline-flex items-center justify-center rounded-2xl bg-[rgb(var(--primary))] px-6 py-3 text-white shadow-lg transition hover:brightness-110">
+                Saglabāt procedūru cenas
+            </button>
+        </form>
+    </div>
 </div>
 @endsection

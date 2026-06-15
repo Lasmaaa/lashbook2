@@ -22,8 +22,10 @@ class BookingController extends Controller
 
     public function calendar()
     {
-        $procedures = Procedure::all();
-        return view('layouts.user.calendar', compact('procedures'));
+        $procedures = Procedure::whereNotIn('code', ['volume_2d_3d', 'volume_4d_plus'])->get();
+        $volumeOptions = Procedure::whereIn('code', ['volume_2d_3d', 'volume_4d_plus'])->get();
+
+        return view('layouts.user.calendar', compact('procedures', 'volumeOptions'));
     }
 
     public function availableTimes(Request $request): JsonResponse
@@ -59,18 +61,38 @@ class BookingController extends Controller
             'time' => 'required',
             'procedure_id' => 'required|array|min:1',
             'procedure_id.*' => 'required|exists:procedures,id',
+            'volume_option' => 'nullable|exists:procedures,id',
             'details' => 'nullable|string',
         ]);
 
+        $procedureIds = collect($request->procedure_id)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $volumeProcedure = Procedure::where('code', 'volume')->first();
+        $volumeOptionIds = Procedure::whereIn('code', ['volume_2d_3d', 'volume_4d_plus'])->pluck('id')->toArray();
+
+        if ($volumeProcedure && $procedureIds->contains($volumeProcedure->id)) {
+            $volumeOptionId = (int) $request->input('volume_option');
+            if (!$volumeOptionId || !in_array($volumeOptionId, $volumeOptionIds, true)) {
+                return back()
+                    ->withErrors(['volume_option' => 'Lūdzu izvēlies apjoma veidu.'])
+                    ->withInput();
+            }
+
+            $procedureIds = $procedureIds->reject(fn ($id) => $id === $volumeProcedure->id);
+            $procedureIds->push($volumeOptionId);
+        }
+
+        $procedureIds = $procedureIds->unique()->values()->all();
+
         $selectedProcedures = Procedure::query()
-            ->whereIn('id', $request->procedure_id)
+            ->whereIn('id', $procedureIds)
             ->get();
 
-        $selectedNames = $selectedProcedures->pluck('name_lv')->map(fn ($name) => mb_strtolower($name));
-        if (
-            ($selectedNames->contains('apjoms') || $selectedNames->contains('apjoma pieaudzējums'))
-            && ($selectedNames->contains('klasika') || $selectedNames->contains('klasiskais pieaudzējums'))
-        ) {
+        if ($selectedProcedures->contains('code', 'classic')
+            && $selectedProcedures->contains(fn ($procedure) => in_array($procedure->code, ['volume', 'volume_2d_3d', 'volume_4d_plus'], true))) {
             return back()
                 ->withErrors(['procedure_id' => 'Apjomu un klasiku reizē izvēlēties nevar.'])
                 ->withInput();
@@ -87,7 +109,7 @@ class BookingController extends Controller
                 ->withInput();
         }
 
-        foreach ($request->procedure_id as $id) {
+        foreach ($procedureIds as $id) {
             Booking::create([
                 'user_id' => auth()->id(),
                 'procedure_id' => $id,

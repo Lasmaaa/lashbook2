@@ -15,6 +15,7 @@ class Procedure extends Model
         'name_ru',
         'duration',
         'price',
+        'code',
     ];
 
     // Palīdzība valodu izvēlei

@@ -30,7 +30,7 @@
                         <label class="block mt-6 mb-2 font-medium modal-text">{{ __('ui.procedures') }}</label>
                         <select id="procedure-select" name="procedure_id[]" multiple class="w-full border rounded-2xl p-4 min-h-40 modal-text" style="border-color: rgb(var(--border));">
                             @forelse($procedures as $proc)
-                                <option value="{{ $proc->id }}" data-name="{{ mb_strtolower($proc->name_lv) }}">
+                                <option value="{{ $proc->id }}" data-name="{{ mb_strtolower($proc->name_lv) }}" data-code="{{ $proc->code }}">
                                     {{ $proc->getName() }} ({{ $proc->duration }} min)
                                 </option>
                             @empty
@@ -41,6 +41,47 @@
                         @error('procedure_id')
                             <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
                         @enderror
+
+                        <div id="volume-option-wrapper" class="hidden mt-4">
+                            <label class="block mb-2 font-medium modal-text">Izvēlies apjoma veidu</label>
+                            <select id="volume-option-select" name="volume_option" class="w-full border rounded-2xl p-4 modal-text" style="border-color: rgb(var(--border));">
+                                <option value="">Izvēlies apjomu</option>
+                                @foreach($volumeOptions as $option)
+                                    <option value="{{ $option->id }}" data-price="{{ $option->price }}">
+                                        {{ $option->getName() }} ({{ number_format($option->price, 2) }} EUR)
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('volume_option')
+                                <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <div class="mt-6 rounded-3xl border border-zinc-200 dark:border-zinc-700 p-4 bg-[rgb(var(--card))]">
+                            <h3 class="font-semibold mb-3">Procedūru cenrādis</h3>
+                            <div class="space-y-3 text-sm">
+                                @foreach($procedures as $procedure)
+                                    @if($procedure->code !== 'volume')
+                                        <div class="flex items-center justify-between rounded-2xl border p-3" style="border-color: rgb(var(--border));">
+                                            <span>{{ $procedure->getName() }}</span>
+                                            <span class="font-semibold">{{ number_format($procedure->price, 2) }} EUR</span>
+                                        </div>
+                                    @else
+                                        <div class="rounded-2xl border p-3" style="border-color: rgb(var(--border));">
+                                            <div class="font-semibold">{{ $procedure->getName() }}</div>
+                                            <div class="mt-2 space-y-2">
+                                                @foreach($volumeOptions as $volumeOption)
+                                                    <div class="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-900 p-3" style="border-color: rgb(var(--border));">
+                                                        <span>{{ $volumeOption->getName() }}</span>
+                                                        <span class="font-semibold">{{ number_format($volumeOption->price, 2) }} EUR</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
                     </div>
 
                     <div>
@@ -175,7 +216,7 @@
                 const btn = document.createElement('button');
                 btn.type = 'button';
                 btn.dataset.date = formatted;
-                btn.className = `h-12 rounded-xl border text-sm ${disabled ? 'opacity-40 cursor-not-allowed border-zinc-300 dark:border-zinc-700' : 'border-zinc-300 dark:border-zinc-700 hover:bg-violet-100 dark:hover:bg-violet-900'}`;
+                btn.className = `h-12 rounded-xl border text-sm calendar-day ${disabled ? 'opacity-40 cursor-not-allowed border-zinc-300 dark:border-zinc-700' : 'border-zinc-300 dark:border-zinc-700'}`;
                 btn.textContent = String(day);
                 btn.disabled = disabled;
                 if (!disabled) {
@@ -186,17 +227,37 @@
         }
 
         const procedureSelect = document.getElementById('procedure-select');
+        const volumeOptionWrapper = document.getElementById('volume-option-wrapper');
+        const volumeOptionSelect = document.getElementById('volume-option-select');
+
+        const updateVolumeOptionVisibility = () => {
+            const selectedOptions = [...procedureSelect.selectedOptions];
+            const selectedCodes = selectedOptions.map(item => item.dataset.code);
+            const showVolumeOptions = selectedCodes.includes('volume');
+
+            if (volumeOptionWrapper) {
+                volumeOptionWrapper.classList.toggle('hidden', !showVolumeOptions);
+            }
+
+            if (volumeOptionSelect) {
+                volumeOptionSelect.required = showVolumeOptions;
+            }
+        };
+
         procedureSelect?.addEventListener('change', () => {
-                const selectedOptions = [...procedureSelect.selectedOptions];
-                const names = selectedOptions.map(item => item.dataset.name);
-                if (names.includes('apjoma pieaudzējums') && names.includes('klasiskais pieaudzējums')) {
-                    const lastSelected = selectedOptions[selectedOptions.length - 1];
-                    if (lastSelected) {
-                        lastSelected.selected = false;
-                    }
-                    alert(cannotMixText);
+            const selectedOptions = [...procedureSelect.selectedOptions];
+            const names = selectedOptions.map(item => item.dataset.name);
+            if (names.includes('apjoma pieaudzējums') && names.includes('klasiskais pieaudzējums')) {
+                const lastSelected = selectedOptions[selectedOptions.length - 1];
+                if (lastSelected) {
+                    lastSelected.selected = false;
                 }
-            });
+                alert(cannotMixText);
+            }
+            updateVolumeOptionVisibility();
+        });
+
+        updateVolumeOptionVisibility();
 
         prevMonthBtn?.addEventListener('click', () => {
             cursorMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth() - 1, 1);

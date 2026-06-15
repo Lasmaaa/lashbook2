@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\LoyaltyScanLog;
+use App\Models\Procedure;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -18,7 +19,11 @@ class AdminController extends Controller
             ->orderBy('date')
             ->pluck('count', 'date');
 
-        return view('admin.index', compact('bookingsByDate'));
+        $procedures = Procedure::whereIn('code', ['classic', 'volume', 'volume_2d_3d', 'volume_4d_plus', 'removal_other_master'])
+            ->orderByRaw("FIELD(code, 'classic','volume','volume_2d_3d','volume_4d_plus','removal_other_master')")
+            ->get();
+
+        return view('admin.index', compact('bookingsByDate', 'procedures'));
     }
 
     public function bookingsByDate($date)
@@ -42,6 +47,34 @@ class AdminController extends Controller
         ]);
 
         return back()->with('success', 'Booking status updated.');
+    }
+
+    public function updateProcedures(Request $request)
+    {
+        $validated = $request->validate([
+            'procedures' => 'required|array',
+            'procedures.*.name_lv' => 'required|string',
+            'procedures.*.name_en' => 'required|string',
+            'procedures.*.name_ru' => 'required|string',
+            'procedures.*.price' => 'required|numeric|min:0',
+            'procedures.*.code' => 'required|string|in:classic,volume,volume_2d_3d,volume_4d_plus,removal_other_master',
+        ]);
+
+        foreach ($validated['procedures'] as $id => $procedureData) {
+            $procedure = Procedure::find($id);
+            if (!$procedure || $procedure->code !== $procedureData['code']) {
+                continue;
+            }
+
+            $procedure->update([
+                'name_lv' => $procedureData['name_lv'],
+                'name_en' => $procedureData['name_en'],
+                'name_ru' => $procedureData['name_ru'],
+                'price' => $procedureData['price'],
+            ]);
+        }
+
+        return back()->with('success', 'Procedūru cenas ir atjauninātas.');
     }
 
     public function users()
