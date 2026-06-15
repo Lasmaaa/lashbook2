@@ -20,7 +20,7 @@ WORKDIR /var/www/html
 COPY . .
 
 # 5. Uzstādām PHP pakotnes
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # 6. Uzstādām Node pakotnes un uzbūvējam CSS/JS caur Vite
 RUN npm install && npm run build
