@@ -1,10 +1,10 @@
 FROM php:8.3-apache
 
-# Instalējam nepieciešamās sistēmas pakotnes un GD bibliotēku
+# Instalējam nepieciešamās sistēmas pakotnes, GD un PostgreSQL draiverus
 RUN apt-get update && apt-get install -y \
-    libzip-dev unzip git libpng-dev libjpeg-dev libfreetype6-dev \
+    libzip-dev unzip git libpng-dev libjpeg-dev libfreetype6-dev libpq-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install zip pdo pdo_mysql gd
+    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
