@@ -19,5 +19,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         view()->share('theme', session('theme', 'light'));
+
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
     }
 }
