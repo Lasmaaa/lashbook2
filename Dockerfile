@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd
 
-# 2. Instalējam Node.js un NPM (nepieciešams Vite)
+# 2. Instalējam Node.js un NPM
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y openssl nodejs
 
@@ -19,10 +19,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
-# 5. Uzstādām PHP pakotnes
+# 5. Uzstādām PHP pakotnes, pilnībā ignorējot skriptus būvēšanas laikā
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-# 6. Uzstādām Node pakotnes un uzbūvējam CSS/JS caur Vite
+# 6. Uzstādām Node pakotnes un uzbūvējam stilus
 RUN npm install && npm run build
 
 # 7. Mainām Apache konfigurāciju uz public mapi
@@ -35,5 +35,5 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 
 EXPOSE 80
 
-# 9. Palaižam migrācijas un startējam serveri
-CMD php artisan migrate --force && apache2-foreground
+# 9. Kad konteiners startējas, palaidīs pakotņu atklāšanu, migrācijas un serveri
+CMD php artisan package:discover --ansi && php artisan migrate --force && apache2-foreground
