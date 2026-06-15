@@ -11,7 +11,7 @@
                 <p>{{ $booking->procedure->getName() }}</p>
                 <form method="POST" action="{{ route('admin.bookings.status', $booking) }}" class="mt-3 flex gap-2">
                     @csrf
-                    <select name="status" class="px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                    <select name="status" class="px-3 py-2 rounded-xl border">
                         <option value="arrived" @selected($booking->status === 'arrived')>{{ __('ui.arrived') }}</option>
                         <option value="no_show" @selected($booking->status === 'no_show')>{{ __('ui.no_show') }}</option>
                     </select>

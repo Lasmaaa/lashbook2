@@ -23,6 +23,6 @@ class LanguageController extends Controller
             ]);
         }
 
-        return back()->with('success', __('Language updated.'));
+        return back()->with('success', __('ui.language_updated'));
     }
 }

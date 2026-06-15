@@ -5,21 +5,21 @@
     <h1 class="text-4xl font-bold mb-8">{{ __('ui.select_date') }}</h1>
 
     <div class="card p-6">
-        <div class="flex items-center justify-between mb-4">
-            <button id="prev-month" type="button" class="px-3 py-2 rounded-xl border" style="border-color: rgb(var(--border));">←</button>
-            <h2 id="month-label" class="text-2xl font-semibold"></h2>
-            <button id="next-month" type="button" class="px-3 py-2 rounded-xl border" style="border-color: rgb(var(--border));">→</button>
+        <div class="relative mb-4">
+            <button id="prev-month" type="button" aria-label="Previous month" class="absolute left-0 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border text-lg" style="border-color: rgb(var(--border));">←</button>
+            <h2 id="month-label" class="text-2xl font-semibold text-center mx-auto"></h2>
+            <button id="next-month" type="button" aria-label="Next month" class="absolute right-0 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border text-lg" style="border-color: rgb(var(--border));">→</button>
         </div>
-        <div class="grid grid-cols-7 gap-2 text-center text-xs uppercase tracking-wider text-muted">
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center text-xs uppercase tracking-wider text-muted">
             <div>{{ __('ui.week_mon') }}</div><div>{{ __('ui.week_tue') }}</div><div>{{ __('ui.week_wed') }}</div><div>{{ __('ui.week_thu') }}</div><div>{{ __('ui.week_fri') }}</div><div>{{ __('ui.week_sat') }}</div><div>{{ __('ui.week_sun') }}</div>
         </div>
-        <div id="calendar-grid" class="grid grid-cols-7 gap-2 mt-2"></div>
+        <div id="calendar-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mt-2"></div>
     </div>
 
     <div id="booking-modal" class="hidden fixed inset-0 z-40">
         <div id="booking-overlay" class="absolute inset-0 bg-black/50"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-2xl card p-8 relative max-h-[90vh] overflow-auto text-slate-900 dark:text-slate-100">
+            <div class="w-full max-w-2xl card p-8 relative max-h-[90vh] overflow-auto modal-text">
                 <button id="booking-close" type="button" class="absolute top-4 right-4 w-10 h-10 rounded-xl border" style="border-color: rgb(var(--border));">✕</button>
                 <h2 id="selected-date" class="text-2xl font-semibold"></h2>
                 <form method="POST" action="{{ route('book.store') }}" class="space-y-4">
@@ -27,8 +27,8 @@
                     <input type="hidden" name="date" id="form-date">
 
                     <div>
-                        <label class="block mt-6 mb-2 font-medium text-slate-900 dark:text-slate-100">{{ __('ui.procedures') }}</label>
-                        <select id="procedure-select" name="procedure_id[]" multiple class="w-full border rounded-2xl p-4 bg-white dark:bg-zinc-900 min-h-40 text-slate-900 dark:text-slate-100" style="border-color: rgb(var(--border));">
+                        <label class="block mt-6 mb-2 font-medium modal-text">{{ __('ui.procedures') }}</label>
+                        <select id="procedure-select" name="procedure_id[]" multiple class="w-full border rounded-2xl p-4 min-h-40 modal-text" style="border-color: rgb(var(--border));">
                             @forelse($procedures as $proc)
                                 <option value="{{ $proc->id }}" data-name="{{ mb_strtolower($proc->name_lv) }}">
                                     {{ $proc->getName() }} ({{ $proc->duration }} min)
@@ -44,8 +44,8 @@
                     </div>
 
                     <div>
-                        <label class="block mt-6 mb-2 font-medium text-slate-900 dark:text-slate-100">{{ __('ui.available_times') }}</label>
-                        <select id="time-select" name="time" class="w-full border rounded-2xl p-4 bg-white dark:bg-zinc-900 text-slate-900 dark:text-slate-100" style="border-color: rgb(var(--border));" required>
+                        <label class="block mt-6 mb-2 font-medium modal-text">{{ __('ui.available_times') }}</label>
+                        <select id="time-select" name="time" class="w-full border rounded-2xl p-4 modal-text" style="border-color: rgb(var(--border));" required>
                             <option value="">{{ __('ui.choose_date_first') }}</option>
                         </select>
                         @error('time')
@@ -54,7 +54,7 @@
                     </div>
 
                     <label class="block mt-6">{{ __('ui.details_optional') }}</label>
-                    <textarea name="details" class="w-full border rounded-3xl p-4 bg-white dark:bg-zinc-900 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400" style="border-color: rgb(var(--border));" rows="4"></textarea>
+                    <textarea name="details" class="w-full border rounded-3xl p-4" style="border-color: rgb(var(--border));" rows="4"></textarea>
 
                     <button type="submit" class="mt-8 w-full btn-primary py-5 rounded-2xl text-xl">
                         {{ __('ui.confirm_booking') }}

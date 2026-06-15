@@ -17,7 +17,7 @@ class SetLocale
             $request->session()->put('locale', $locale);
         }
 
-        app()->setLocale($locale ?: 'lv');
+        app()->setLocale($locale ?: config('app.locale', 'lv'));
 
         return $next($request);
     }

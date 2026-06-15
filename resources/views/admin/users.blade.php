@@ -1,15 +1,17 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-8">
+<div class="p-8 max-w-7xl mx-auto">
     <h1 class="text-3xl font-semibold">{{ __('ui.admin_procedures') }}</h1>
 
-    <form method="GET" class="mt-6 flex flex-wrap gap-3 items-center">
-        <input type="text" name="email" value="{{ $search }}" placeholder="{{ __('ui.search_by_email') }}" class="px-4 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 min-w-80">
-        <label class="flex items-center gap-2"><input type="checkbox" name="ranges[]" value="week" @checked($filters->contains('week'))> {{ __('ui.week') }}</label>
-        <label class="flex items-center gap-2"><input type="checkbox" name="ranges[]" value="month" @checked($filters->contains('month'))> {{ __('ui.month') }}</label>
-        <label class="flex items-center gap-2"><input type="checkbox" name="ranges[]" value="year" @checked($filters->contains('year'))> {{ __('ui.year') }}</label>
-        <button type="submit" class="px-4 py-3 rounded-xl bg-violet-600 text-white">{{ __('ui.filter') }}</button>
+    <form method="GET" class="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <input type="text" name="email" value="{{ $search }}" placeholder="{{ __('ui.search_by_email') }}" class="w-full sm:max-w-sm px-4 py-3 rounded-xl border">
+        <div class="flex flex-wrap gap-3 items-center">
+            <label class="flex items-center gap-2"><input type="checkbox" name="ranges[]" value="week" @checked($filters->contains('week'))> {{ __('ui.week') }}</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="ranges[]" value="month" @checked($filters->contains('month'))> {{ __('ui.month') }}</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="ranges[]" value="year" @checked($filters->contains('year'))> {{ __('ui.year') }}</label>
+        </div>
+        <button type="submit" class="w-full sm:w-auto px-4 py-3 rounded-xl bg-violet-600 text-white">{{ __('ui.filter') }}</button>
     </form>
 
     <div class="mt-6 bg-[rgb(var(--card))] rounded-2xl p-4">
@@ -25,7 +27,7 @@
                 </div>
                 <form method="POST" action="{{ route('admin.users.role', $user) }}" class="flex gap-2 items-center">
                     @csrf
-                    <select name="usertype" class="px-3 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                    <select name="usertype" class="px-3 py-2 rounded-xl border">
                         <option value="user" @selected($user->usertype === 'user')>{{ __('ui.user') }}</option>
                         <option value="admin" @selected($user->usertype === 'admin')>{{ __('ui.admin') }}</option>
                     </select>

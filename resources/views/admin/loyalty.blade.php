@@ -13,7 +13,7 @@
         @csrf
         <input type="hidden" id="source-input" name="source" value="code">
         <label class="block mb-2">{{ __('ui.loyalty_code') }}</label>
-        <input id="code-input" type="text" name="code" class="w-full px-4 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900" required>
+        <input id="code-input" type="text" name="code" class="w-full px-4 py-3 rounded-xl border" required>
         <div id="qr-reader" class="hidden mt-4"></div>
         <button class="mt-4 px-5 py-3 rounded-xl bg-violet-600 text-white" type="submit">{{ __('ui.save') }}</button>
     </form>
@@ -21,7 +21,7 @@
     <form method="POST" action="{{ route('admin.loyalty.refresh') }}" class="mt-4 bg-[rgb(var(--card))] p-6 rounded-2xl">
         @csrf
         <label class="block mb-2">{{ __('ui.refresh_loyalty_by_code') }}</label>
-        <input type="text" name="code" class="w-full px-4 py-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900" required>
+        <input type="text" name="code" class="w-full px-4 py-3 rounded-xl border" required>
         <button class="mt-4 px-5 py-3 rounded-xl bg-rose-600 text-white" type="submit">{{ __('ui.refresh') }}</button>
     </form>
 

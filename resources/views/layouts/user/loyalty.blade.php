@@ -13,7 +13,7 @@
 
         <p class="font-mono text-3xl tracking-widest mt-6 break-all">{{ $loyaltyCode !== '' ? $loyaltyCode : 'NO-CODE' }}</p>
 
-        <div class="grid grid-cols-5 gap-6 mt-12">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-12">
             @for($i = 1; $i <= 10; $i++)
                 <div class="aspect-square rounded-2xl border-4 flex items-center justify-center text-4xl
                     {{ $stamp->stamps >= $i ? 'bg-violet-600 border-violet-600 text-white' : 'border-zinc-300 dark:border-zinc-700' }}">
