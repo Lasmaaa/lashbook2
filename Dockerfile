@@ -21,5 +21,7 @@ RUN chown -R www-data:www-data /var/web/storage /var/web/bootstrap/cache
 
 RUN composer install --no-dev --optimize-autoloader
 
-# Atveram portu, ko prasa Render
 EXPOSE 80
+
+# Automātiski palaižam datubāzes migrācijas un pēc tam startējam Apache serveri
+CMD php artisan migrate --force && apache2-foreground
