@@ -2,7 +2,7 @@ services:
   - type: web
     name: mans-laravel-apps
     env: php
-    buildCommand: composer install --no-dev --optimize-autoloader
+    buildCommand: php /usr/local/bin/composer install --no-dev --optimize-autoloader
     startCommand: php -S 0.0.0.0:$PORT -t public
     envVars:
       - key: APP_ENV
