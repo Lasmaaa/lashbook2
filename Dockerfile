@@ -37,6 +37,8 @@ RUN npm ci
 
 COPY . .
 
+RUN mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs bootstrap/cache
+
 RUN cp .env.example .env \
     && APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')" \
     && export APP_KEY \

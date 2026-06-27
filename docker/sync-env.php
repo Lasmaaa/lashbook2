@@ -79,6 +79,7 @@ $keys = [
     'APP_NAME',
     'APP_URL',
     'LOG_CHANNEL',
+    'VIEW_COMPILED_PATH',
     'DB_CONNECTION',
     'DATABASE_URL',
     'DB_URL',

@@ -70,10 +70,17 @@ test('required deployment files exist', () => {
   }
 });
 
+test('start.sh avoids view cache commands that break Render boot', () => {
+  const start = read(path.join(ROOT, 'docker/start.sh'));
+  assert.doesNotMatch(start, /view:cache/);
+  assert.doesNotMatch(start, /optimize:clear/);
+  assert.match(start, /VIEW_COMPILED_PATH/);
+});
+
 test('Dockerfile installs PHP extensions and retries composer', () => {
   const dockerfile = read(path.join(ROOT, 'Dockerfile'));
   assert.match(dockerfile, /libonig-dev/);
-  assert.match(dockerfile, /mbstring/);
+  assert.match(dockerfile, /mkdir -p storage\/framework\/views/);
   assert.match(dockerfile, /composer:2\.8/);
   assert.match(dockerfile, /COMPOSER_MEMORY_LIMIT=-1/);
   assert.match(dockerfile, /composer install --no-dev/);
