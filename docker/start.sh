@@ -11,6 +11,9 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs bootstrap/cache
+chmod -R 775 storage bootstrap/cache || true
+
 php docker/sync-env.php
 
 if [ -f bootstrap/cache/render-env.sh ]; then
@@ -57,7 +60,7 @@ php docker/sync-env.php
 php artisan package:discover --ansi
 php artisan config:cache --no-interaction
 php artisan route:cache --no-interaction
-php artisan view:cache --no-interaction
+php artisan view:cache --no-interaction || log "View cache skipped"
 
 sed -i "s/Listen 80/Listen ${PORT}/" /etc/apache2/ports.conf
 sed -i "s/:80/:${PORT}/" /etc/apache2/sites-enabled/000-default.conf
