@@ -86,7 +86,7 @@ test('render.yaml defines docker web service with auto deploy', () => {
   assert.match(yaml, /dockerfilePath:\s*\.\/Dockerfile/);
   assert.match(yaml, /healthCheckPath:\s*\/health/);
   assert.match(yaml, /autoDeploy:\s*true/);
-  assert.match(yaml, /branch:\s*lashbook2/);
+  assert.match(yaml, /branch:\s*main/);
   assert.doesNotMatch(yaml, /key:\s*APP_KEY/, 'APP_KEY must be managed by container, not Render');
 });
 

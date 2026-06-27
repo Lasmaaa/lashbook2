@@ -10,7 +10,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     autoDeploy: true
-    branch: lashbook2
+    branch: main
     healthCheckPath: /health
     envVars:
       - key: APP_ENV
