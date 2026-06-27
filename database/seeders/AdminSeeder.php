@@ -2,29 +2,30 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\LoyaltyStamp;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class AdminSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run()
-{
-    $admin = \App\Models\User::create([
-        'name' => 'Admin',
-        'surname' => 'Lashbook',
-        'email' => 'admin@lashbook.lv',
-        'password' => bcrypt('admin123'),
-        'usertype' => 'admin',
-        'loyalty_code' => 'ADMIN001',
-        'phone' => '+371 20000000',
-    ]);
+    public function run(): void
+    {
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@admin'],
+            [
+                'name' => 'admin',
+                'surname' => 'admin',
+                'password' => Hash::make('adminadmin'),
+                'usertype' => 'admin',
+                'loyalty_code' => 'ADMIN001',
+                'phone' => '+371 00000000',
+            ]
+        );
 
-    \App\Models\LoyaltyStamp::create([
-        'user_id' => $admin->id,
-        'stamps' => 0,
-    ]);
-}
+        LoyaltyStamp::firstOrCreate(
+            ['user_id' => $admin->id],
+            ['stamps' => 0]
+        );
+    }
 }

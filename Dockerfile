@@ -1,39 +1,59 @@
 FROM php:8.3-apache
 
-# 1. Instalējam sistēmas pakotnes, GD un PostgreSQL draiverus
 RUN apt-get update && apt-get install -y \
-    libzip-dev unzip git libpng-dev libjpeg-dev libfreetype6-dev libpq-dev curl \
+    libzip-dev unzip git libpng-dev libjpeg-dev libfreetype6-dev libpq-dev \
+    libicu-dev curl openssl \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd
+    && docker-php-ext-install zip pdo pdo_mysql pdo_pgsql gd mbstring exif bcmath intl \
+    && rm -rf /var/lib/apt/lists/*
 
-# 2. Instalējam Node.js un NPM
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y openssl nodejs
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
 
-# 3. Ieslēdzam Apache mod_rewrite
 RUN a2enmod rewrite
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
-# 4. Nokopējam projekta failus
 WORKDIR /var/www/html
+
+ENV COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_MEMORY_LIMIT=-1 \
+    COMPOSER_PROCESS_TIMEOUT=0
+
+COPY composer.json composer.lock ./
+RUN set -e; \
+    for attempt in 1 2 3 4 5; do \
+      if composer install --no-dev --optimize-autoloader --no-scripts --no-interaction --prefer-dist; then \
+        exit 0; \
+      fi; \
+      echo "composer install failed (attempt ${attempt}/5), retrying in 15s..."; \
+      sleep 15; \
+    done; \
+    exit 1
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
 COPY . .
 
-# 5. Uzstādām PHP pakotnes, pilnībā ignorējot skriptus būvēšanas laikā
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+RUN cp .env.example .env \
+    && APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')" \
+    && export APP_KEY \
+    && php docker/sync-env.php
 
-# 6. Uzstādām Node pakotnes un uzbūvējam stilus
-RUN npm install && npm run build
+RUN composer dump-autoload --optimize --no-interaction \
+    && npm run build \
+    && rm -rf node_modules
 
-# 7. Mainām Apache konfigurāciju uz public mapi
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
+    && cp docker/laravel-env.conf /etc/apache2/conf-enabled/laravel-env.conf
 
-# 8. Piešķiram tiesības mapēm
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod +x docker/start.sh
 
-EXPOSE 80
+EXPOSE 8080
 
-# 9. Kad konteiners startējas, palaidīs pakotņu atklāšanu, migrācijas un serveri
-CMD php artisan package:discover --ansi && php artisan migrate --force && apache2-foreground
+CMD ["docker/start.sh"]

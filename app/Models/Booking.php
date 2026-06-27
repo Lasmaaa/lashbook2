@@ -11,7 +11,9 @@ class Booking extends Model
 
     protected $fillable = [
         'user_id',
+        'client_name',
         'procedure_id',
+        'schedule_procedure_id',
         'date',
         'time',
         'details',
@@ -32,6 +34,20 @@ class Booking extends Model
     public function procedure()
     {
         return $this->belongsTo(Procedure::class);
+    }
+
+    public function scheduleProcedure()
+    {
+        return $this->belongsTo(ScheduleProcedure::class);
+    }
+
+    public function getProcedureName(): string
+    {
+        if ($this->scheduleProcedure) {
+            return $this->scheduleProcedure->getName();
+        }
+
+        return $this->procedure?->getName() ?? '-';
     }
 
     // Palīgfunkcijas

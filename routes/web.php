@@ -26,10 +26,10 @@ Route::middleware(['auth'])->group(function () {
             : redirect()->route('user.index');
     })->name('dashboard');
 
-    // USER ROUTES
     Route::get('/user/index', [BookingController::class, 'index'])->name('user.index');
 
     Route::get('/calendar', [BookingController::class, 'calendar'])->name('calendar');
+    Route::get('/calendar/schedule', [BookingController::class, 'scheduleForDate'])->name('calendar.schedule');
     Route::get('/calendar/available-times', [BookingController::class, 'availableTimes'])->name('calendar.available-times');
     Route::post('/book', [BookingController::class, 'store'])->name('book.store');
 
@@ -37,21 +37,32 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/feedback/create', [FeedbackController::class, 'create'])->name('feedback.create');
     Route::post('/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
 
-    // ADMIN ROUTES
+    Route::view('/terms', 'pages.terms')->name('terms');
+
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
     Route::prefix('admin')->middleware('is.admin')->name('admin.')->group(function () {
         Route::get('/index', [AdminController::class, 'index'])->name('index');
-        Route::get('/dashboard', fn () => redirect()->route('admin.index'))->name('dashboard');
+        Route::get('/dashboard', fn () => redirect()->route('admin.action-panel'))->name('dashboard');
+        Route::get('/bookings', [AdminController::class, 'bookings'])->name('bookings');
         Route::get('/bookings/{date}', [AdminController::class, 'bookingsByDate'])->name('bookings.date');
         Route::post('/bookings/{booking}/status', [AdminController::class, 'updateStatus'])->name('bookings.status');
+        Route::get('/procedures', [AdminController::class, 'procedures'])->name('procedures');
+        Route::get('/procedures/{date}', [AdminController::class, 'proceduresForDate'])->name('procedures.date');
+        Route::post('/procedures/{date}', [AdminController::class, 'saveProceduresForDate'])->name('procedures.save');
+        Route::post('/procedures/{date}/apply-all', [AdminController::class, 'applyProceduresToAll'])->name('procedures.apply-all');
         Route::get('/action-panel', [AdminController::class, 'actionPanel'])->name('action-panel');
         Route::get('/loyalty', [LoyaltyController::class, 'adminIndex'])->name('loyalty');
         Route::post('/loyalty/scan', [LoyaltyController::class, 'scan'])->name('loyalty.scan');
         Route::post('/loyalty/refresh', [LoyaltyController::class, 'refresh'])->name('loyalty.refresh');
-        Route::post('/procedures', [AdminController::class, 'updateProcedures'])->name('procedures.update');
         Route::get('/users', [AdminController::class, 'users'])->name('users');
         Route::post('/users/{user}/role', [AdminController::class, 'changeRole'])->name('users.role');
     });
 });
+
+Route::get('/health', fn () => response('ok', 200)->header('Content-Type', 'text/plain'));
 
 Route::post('/set-language', [LanguageController::class, 'set'])->name('language.set');
 Route::post('/toggle-theme', [ProfileController::class, 'toggleTheme'])->name('theme.toggle');

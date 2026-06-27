@@ -4,14 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Procedure;
+use App\Models\ScheduleProcedure;
+use App\Services\ScheduleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
+    public function __construct(private ScheduleService $schedule)
+    {
+    }
+
     public function index()
     {
-        $nextBooking = Booking::with('procedure')
+        $nextBooking = Booking::with(['procedure', 'scheduleProcedure'])
             ->where('user_id', auth()->id())
             ->where('date', '>=', now()->toDateString())
             ->orderBy('date')
@@ -22,36 +28,48 @@ class BookingController extends Controller
 
     public function calendar()
     {
-        $procedures = Procedure::whereNotIn('code', ['volume_2d_3d', 'volume_4d_plus'])->get();
-        $volumeOptions = Procedure::whereIn('code', ['volume_2d_3d', 'volume_4d_plus'])->get();
-
-        return view('layouts.user.calendar', compact('procedures', 'volumeOptions'));
+        return view('layouts.user.calendar');
     }
 
-    public function availableTimes(Request $request): JsonResponse
+    public function scheduleForDate(Request $request): JsonResponse
     {
         $request->validate([
             'date' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
-        $allSlots = collect([
-            '09:00', '10:00', '11:00', '12:00', '13:00',
-            '14:00', '15:00', '16:00', '17:00', '18:00',
-        ]);
+        $date = $request->date;
+        $allSlots = $this->schedule->getTimesForDate($date);
 
-        $available = $allSlots->filter(function (string $slot) use ($request) {
+        $available = $allSlots->filter(function (string $slot) use ($date) {
             return !Booking::query()
-                ->whereDate('date', $request->date)
+                ->whereDate('date', $date)
                 ->whereTime('time', $slot)
                 ->exists();
         })->values();
 
-        $takenSlots = $allSlots->diff($available)->values();
+        $procedures = $this->schedule->getProceduresForDate($date)->map(function ($procedure) {
+            $lang = app()->getLocale();
+
+            return [
+                'ref' => $procedure->ref,
+                'name' => match ($lang) {
+                    'en' => $procedure->name_en,
+                    'ru' => $procedure->name_ru,
+                    default => $procedure->name_lv,
+                },
+                'price' => number_format((float) $procedure->price, 2),
+            ];
+        });
 
         return response()->json([
+            'procedures' => $procedures,
             'available_times' => $available,
-            'taken_times' => $takenSlots,
         ]);
+    }
+
+    public function availableTimes(Request $request): JsonResponse
+    {
+        return $this->scheduleForDate($request);
     }
 
     public function store(Request $request)
@@ -59,44 +77,10 @@ class BookingController extends Controller
         $request->validate([
             'date' => 'required|date|after:yesterday',
             'time' => 'required',
-            'procedure_id' => 'required|array|min:1',
-            'procedure_id.*' => 'required|exists:procedures,id',
-            'volume_option' => 'nullable|exists:procedures,id',
+            'client_name' => 'required|string|max:255',
+            'procedure_ref' => 'required|string',
             'details' => 'nullable|string',
         ]);
-
-        $procedureIds = collect($request->procedure_id)
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-
-        $volumeProcedure = Procedure::where('code', 'volume')->first();
-        $volumeOptionIds = Procedure::whereIn('code', ['volume_2d_3d', 'volume_4d_plus'])->pluck('id')->toArray();
-
-        if ($volumeProcedure && $procedureIds->contains($volumeProcedure->id)) {
-            $volumeOptionId = (int) $request->input('volume_option');
-            if (!$volumeOptionId || !in_array($volumeOptionId, $volumeOptionIds, true)) {
-                return back()
-                    ->withErrors(['volume_option' => 'Lūdzu izvēlies apjoma veidu.'])
-                    ->withInput();
-            }
-
-            $procedureIds = $procedureIds->reject(fn ($id) => $id === $volumeProcedure->id);
-            $procedureIds->push($volumeOptionId);
-        }
-
-        $procedureIds = $procedureIds->unique()->values()->all();
-
-        $selectedProcedures = Procedure::query()
-            ->whereIn('id', $procedureIds)
-            ->get();
-
-        if ($selectedProcedures->contains('code', 'classic')
-            && $selectedProcedures->contains(fn ($procedure) => in_array($procedure->code, ['volume', 'volume_2d_3d', 'volume_4d_plus'], true))) {
-            return back()
-                ->withErrors(['procedure_id' => 'Apjomu un klasiku reizē izvēlēties nevar.'])
-                ->withInput();
-        }
 
         $isTaken = Booking::query()
             ->whereDate('date', $request->date)
@@ -105,21 +89,39 @@ class BookingController extends Controller
 
         if ($isTaken) {
             return back()
-                ->withErrors(['time' => 'Izvēlētais laiks vairs nav pieejams.'])
+                ->withErrors(['time' => __('ui.time_taken')])
                 ->withInput();
         }
 
-        foreach ($procedureIds as $id) {
-            Booking::create([
-                'user_id' => auth()->id(),
-                'procedure_id' => $id,
-                'date' => $request->date,
-                'time' => $request->time,
-                'details' => $request->details,
-            ]);
+        $procedureRef = $request->procedure_ref;
+        $bookingData = [
+            'user_id' => auth()->id(),
+            'client_name' => $request->client_name,
+            'date' => $request->date,
+            'time' => $request->time,
+            'details' => $request->details,
+        ];
+
+        if (str_starts_with($procedureRef, 'sched-')) {
+            $scheduleProcedure = ScheduleProcedure::find((int) str_replace('sched-', '', $procedureRef));
+            if (!$scheduleProcedure) {
+                return back()->withErrors(['procedure_ref' => __('ui.invalid_procedure')])->withInput();
+            }
+            $bookingData['schedule_procedure_id'] = $scheduleProcedure->id;
+            $bookingData['procedure_id'] = Procedure::query()->value('id');
+        } elseif (str_starts_with($procedureRef, 'proc-')) {
+            $procedure = Procedure::find((int) str_replace('proc-', '', $procedureRef));
+            if (!$procedure) {
+                return back()->withErrors(['procedure_ref' => __('ui.invalid_procedure')])->withInput();
+            }
+            $bookingData['procedure_id'] = $procedure->id;
+        } else {
+            return back()->withErrors(['procedure_ref' => __('ui.invalid_procedure')])->withInput();
         }
 
+        Booking::create($bookingData);
+
         return redirect()->route('user.index')
-            ->with('success', 'Pieraksts ir veiksmīgi izveidots.');
+            ->with('success', __('ui.booking_success'));
     }
 }

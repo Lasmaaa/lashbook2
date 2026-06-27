@@ -31,6 +31,7 @@ class FeedbackController extends Controller
             'photo' => $photoPath,
         ]);
 
-        return redirect()->route('user.index')->with('success', 'Paldies par atsauksmi!');
+        return redirect()->route('user.index')
+            ->with('success', __('ui.feedback_success'));
     }
 }

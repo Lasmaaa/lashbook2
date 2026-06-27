@@ -1,29 +1,118 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-8 max-w-6xl mx-auto">
-    <h1 class="text-4xl font-semibold tracking-tight">Sveicināti, {{ auth()->user()->name }}!</h1>
-    <p class="text-muted mt-2">Tavs personīgais skropstu pieaudzēšanas pierakstu panelis.</p>
+<div class="max-w-6xl mx-auto">
+    <div class="page-header">
+        <span class="brand-badge">{{ __('ui.dashboard') }}</span>
+        <h1 class="mt-3 font-display">{{ __('ui.professional_booking') }}</h1>
+        <p>{{ __('ui.book_appointment_desc') }}</p>
+    </div>
 
-    @if($nextBooking)
-        <div class="mt-8 card p-6">
-            <h3 class="text-lg font-semibold">Nākamais pieraksts</h3>
-            <p class="text-3xl mt-2">{{ $nextBooking->date->format('d.m.Y') }} pl. {{ $nextBooking->time }}</p>
+    <section class="relative overflow-hidden rounded-[1.75rem] card" data-testid="home-carousel">
+        <div id="carousel" class="relative h-56 sm:h-72 md:h-[22rem]">
+            @foreach([
+                ['img' => 'https://picsum.photos/seed/lashbook1/1400/700', 'title' => __('ui.slide_1_title'), 'text' => __('ui.slide_1_text')],
+                ['img' => 'https://picsum.photos/seed/lashbook2/1400/700', 'title' => __('ui.slide_2_title'), 'text' => __('ui.slide_2_text')],
+                ['img' => 'https://picsum.photos/seed/lashbook3/1400/700', 'title' => __('ui.slide_3_title'), 'text' => __('ui.slide_3_text')],
+            ] as $index => $slide)
+                <div class="carousel-slide absolute inset-0 transition-opacity duration-700 {{ $index === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0' }}" data-index="{{ $index }}">
+                    <img src="{{ $slide['img'] }}" alt="{{ $slide['title'] }}" class="w-full h-full object-cover" loading="{{ $index === 0 ? 'eager' : 'lazy' }}">
+                    <div class="absolute inset-0 bg-gradient-to-t from-[rgba(16,12,24,0.82)] via-[rgba(16,12,24,0.28)] to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 right-0 p-5 sm:p-8 text-white">
+                        <h2 class="text-2xl sm:text-4xl font-display">{{ $slide['title'] }}</h2>
+                        <p class="mt-2 max-w-2xl text-sm sm:text-base text-white/85">{{ $slide['text'] }}</p>
+                    </div>
+                </div>
+            @endforeach
+            <button type="button" id="carousel-prev" aria-label="Previous slide" class="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/90 text-zinc-800 shadow-lg">←</button>
+            <button type="button" id="carousel-next" aria-label="Next slide" class="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/90 text-zinc-800 shadow-lg">→</button>
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                @for($i = 0; $i < 3; $i++)
+                    <button type="button" aria-label="Slide {{ $i + 1 }}" class="carousel-dot w-2.5 h-2.5 rounded-full transition {{ $i === 0 ? 'bg-white scale-110' : 'bg-white/45' }}" data-index="{{ $i }}"></button>
+                @endfor
+            </div>
         </div>
-    @else
-        <div class="mt-8 card p-6">
-            <h3 class="text-lg font-semibold">Nākamais pieraksts</h3>
-            <p class="mt-2 text-muted">Pašlaik nav aktīvu pierakstu.</p>
+    </section>
+
+    <section class="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4" aria-label="Highlights">
+        @foreach([
+            ['title' => __('ui.slide_1_title'), 'text' => __('ui.slide_1_text')],
+            ['title' => __('ui.slide_2_title'), 'text' => __('ui.slide_2_text')],
+            ['title' => __('ui.slide_3_title'), 'text' => __('ui.slide_3_text')],
+        ] as $index => $panel)
+            <div class="carousel-panel card p-5 transition-all duration-300 {{ $index === 0 ? 'is-active' : '' }}" data-index="{{ $index }}">
+                <h3 class="text-lg font-display font-semibold">{{ $panel['title'] }}</h3>
+                <p class="text-muted mt-2 text-sm leading-relaxed">{{ $panel['text'] }}</p>
+            </div>
+        @endforeach
+    </section>
+
+    <section class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" data-testid="home-actions">
+        <a href="{{ route('calendar') }}" class="action-card card group">
+            <div class="text-4xl mb-4" aria-hidden="true">📅</div>
+            <h3 class="text-xl font-display font-semibold">{{ __('ui.book_appointment') }}</h3>
+            <p class="text-muted text-sm mt-2">{{ __('ui.book_appointment_desc') }}</p>
+        </a>
+        <a href="{{ route('feedback.create') }}" class="action-card card group">
+            <div class="text-4xl mb-4" aria-hidden="true">💬</div>
+            <h3 class="text-xl font-display font-semibold">{{ __('ui.reviews') }}</h3>
+            <p class="text-muted text-sm mt-2">{{ __('ui.reviews_desc') }}</p>
+        </a>
+        <a href="{{ route('loyalty') }}" class="action-card card group sm:col-span-2 lg:col-span-1">
+            <div class="text-4xl mb-4" aria-hidden="true">⭐</div>
+            <h3 class="text-xl font-display font-semibold">{{ __('ui.loyalty_card') }}</h3>
+            <p class="text-muted text-sm mt-2">{{ __('ui.loyalty_card_desc') }}</p>
+        </a>
+    </section>
+
+    @if($nextBooking ?? null)
+        <div class="mt-10 card p-6">
+            <h3 class="text-lg font-display font-semibold">{{ __('ui.next_booking') }}</h3>
+            <p class="text-2xl sm:text-3xl mt-2 font-semibold">{{ $nextBooking->date->format('d.m.Y') }} · {{ substr((string) $nextBooking->time, 0, 5) }}</p>
+            <p class="text-muted mt-1">{{ $nextBooking->getProcedureName() }}</p>
         </div>
     @endif
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-        <a href="{{ route('calendar') }}" class="block text-white text-center py-16 rounded-3xl text-2xl font-semibold btn-primary shadow-lg transition">
-            Pierakstīties uz procedūru
-        </a>
-        <a href="{{ route('loyalty') }}" class="block text-white text-center py-16 rounded-3xl text-2xl font-semibold shadow-lg transition" style="background: linear-gradient(135deg, rgb(var(--accent)), rgb(var(--primary)));">
-            Loyalty Card un bonusi
-        </a>
-    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const slides = [...document.querySelectorAll('.carousel-slide')];
+    const panels = [...document.querySelectorAll('.carousel-panel')];
+    const dots = [...document.querySelectorAll('.carousel-dot')];
+    let current = 0;
+    let timer;
+
+    function show(index) {
+        current = (index + slides.length) % slides.length;
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('opacity-100', i === current);
+            slide.classList.toggle('z-10', i === current);
+            slide.classList.toggle('opacity-0', i !== current);
+            slide.classList.toggle('z-0', i !== current);
+        });
+        panels.forEach((panel, i) => {
+            panel.classList.toggle('is-active', i === current);
+        });
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('bg-white', i === current);
+            dot.classList.toggle('scale-110', i === current);
+            dot.classList.toggle('bg-white/45', i !== current);
+        });
+    }
+
+    function next() { show(current + 1); }
+    function prev() { show(current - 1); }
+
+    document.getElementById('carousel-next')?.addEventListener('click', () => { next(); resetTimer(); });
+    document.getElementById('carousel-prev')?.addEventListener('click', () => { prev(); resetTimer(); });
+    dots.forEach(dot => dot.addEventListener('click', () => { show(Number(dot.dataset.index)); resetTimer(); }));
+
+    function resetTimer() {
+        clearInterval(timer);
+        timer = setInterval(next, 7000);
+    }
+
+    resetTimer();
+});
+</script>
 @endsection

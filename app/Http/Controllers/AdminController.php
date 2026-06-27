@@ -3,32 +3,40 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Feedback;
 use App\Models\LoyaltyScanLog;
-use App\Models\Procedure;
+use App\Models\ScheduleProcedure;
+use App\Models\ScheduleTime;
 use App\Models\User;
+use App\Services\ScheduleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
+    public function __construct(private ScheduleService $schedule)
+    {
+    }
+
     public function index()
+    {
+        return redirect()->route('admin.action-panel');
+    }
+
+    public function bookings()
     {
         $bookingsByDate = Booking::selectRaw('date, COUNT(*) as count')
             ->groupBy('date')
             ->orderBy('date')
             ->pluck('count', 'date');
 
-        $procedures = Procedure::whereIn('code', ['classic', 'volume', 'volume_2d_3d', 'volume_4d_plus', 'removal_other_master'])
-            ->orderByRaw("FIELD(code, 'classic','volume','volume_2d_3d','volume_4d_plus','removal_other_master')")
-            ->get();
-
-        return view('admin.index', compact('bookingsByDate', 'procedures'));
+        return view('admin.bookings', compact('bookingsByDate'));
     }
 
     public function bookingsByDate($date)
     {
-        $bookings = Booking::with(['user', 'procedure'])
+        $bookings = Booking::with(['user', 'procedure', 'scheduleProcedure'])
             ->where('date', $date)
             ->orderBy('time')
             ->get();
@@ -46,35 +54,108 @@ class AdminController extends Controller
             'status' => $request->status,
         ]);
 
-        return back()->with('success', 'Booking status updated.');
+        return back()->with('success', __('ui.status_updated'));
     }
 
-    public function updateProcedures(Request $request)
+    public function procedures()
+    {
+        $datesWithSchedule = ScheduleProcedure::selectRaw('date')
+            ->union(ScheduleTime::selectRaw('date'))
+            ->pluck('date')
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->unique()
+            ->flip();
+
+        return view('admin.procedures', compact('datesWithSchedule'));
+    }
+
+    public function proceduresForDate(string $date)
+    {
+        $procedures = $this->schedule->getProceduresForDate($date)->map(fn ($item) => [
+            'name_lv' => $item->name_lv,
+            'name_en' => $item->name_en,
+            'name_ru' => $item->name_ru,
+            'price' => (float) $item->price,
+        ])->values();
+
+        $times = $this->schedule->getTimesForDate($date)->values();
+
+        return response()->json([
+            'date' => $date,
+            'procedures' => $procedures,
+            'times' => $times,
+            'has_custom' => $this->schedule->hasCustomSchedule($date),
+        ]);
+    }
+
+    public function saveProceduresForDate(Request $request, string $date)
     {
         $validated = $request->validate([
-            'procedures' => 'required|array',
-            'procedures.*.name_lv' => 'required|string',
-            'procedures.*.name_en' => 'required|string',
-            'procedures.*.name_ru' => 'required|string',
-            'procedures.*.price' => 'required|numeric|min:0',
-            'procedures.*.code' => 'required|string|in:classic,volume,volume_2d_3d,volume_4d_plus,removal_other_master',
+            'procedures' => 'nullable|array',
+            'procedures.*.name_lv' => 'nullable|string|max:255',
+            'procedures.*.name_en' => 'nullable|string|max:255',
+            'procedures.*.name_ru' => 'nullable|string|max:255',
+            'procedures.*.price' => 'nullable|numeric|min:0',
+            'times' => 'nullable|array',
+            'times.*' => 'nullable|string',
         ]);
 
-        foreach ($validated['procedures'] as $id => $procedureData) {
-            $procedure = Procedure::find($id);
-            if (!$procedure || $procedure->code !== $procedureData['code']) {
-                continue;
-            }
+        $procedures = collect($validated['procedures'] ?? [])
+            ->filter(function (array $procedure) {
+                return trim((string) ($procedure['name_lv'] ?? '')) !== ''
+                    || trim((string) ($procedure['name_en'] ?? '')) !== ''
+                    || trim((string) ($procedure['name_ru'] ?? '')) !== '';
+            })
+            ->values()
+            ->all();
 
-            $procedure->update([
-                'name_lv' => $procedureData['name_lv'],
-                'name_en' => $procedureData['name_en'],
-                'name_ru' => $procedureData['name_ru'],
-                'price' => $procedureData['price'],
-            ]);
+        $this->schedule->saveForDate(
+            $date,
+            $procedures,
+            $validated['times'] ?? []
+        );
+
+        return back()->with('success', __('ui.schedule_saved'));
+    }
+
+    public function applyProceduresToAll(Request $request, string $date)
+    {
+        $validated = $request->validate([
+            'from_date' => 'required|date',
+            'to_date' => 'required|date|after_or_equal:from_date',
+            'procedures' => 'nullable|array',
+            'procedures.*.name_lv' => 'nullable|string|max:255',
+            'procedures.*.name_en' => 'nullable|string|max:255',
+            'procedures.*.name_ru' => 'nullable|string|max:255',
+            'procedures.*.price' => 'nullable|numeric|min:0',
+            'times' => 'nullable|array',
+            'times.*' => 'nullable|string',
+        ]);
+
+        if (!empty($validated['procedures']) || !empty($validated['times'])) {
+            $procedures = collect($validated['procedures'] ?? [])
+                ->filter(function (array $procedure) {
+                    return trim((string) ($procedure['name_lv'] ?? '')) !== ''
+                        || trim((string) ($procedure['name_en'] ?? '')) !== ''
+                        || trim((string) ($procedure['name_ru'] ?? '')) !== '';
+                })
+                ->values()
+                ->all();
+
+            $this->schedule->saveForDate(
+                $date,
+                $procedures,
+                $validated['times'] ?? []
+            );
         }
 
-        return back()->with('success', 'Procedūru cenas ir atjauninātas.');
+        $count = $this->schedule->applyToAllDates(
+            $date,
+            Carbon::parse($validated['from_date']),
+            Carbon::parse($validated['to_date'])
+        );
+
+        return back()->with('success', __('ui.schedule_applied_all', ['count' => $count]));
     }
 
     public function users()
@@ -85,45 +166,7 @@ class AdminController extends Controller
             ->latest()
             ->get();
 
-        $filters = collect(request('ranges', ['week']));
-        $rangeConfig = [
-            'week' => 7,
-            'month' => 30,
-            'year' => 365,
-        ];
-
-        $chartData = [];
-        foreach ($filters as $range) {
-            if (!isset($rangeConfig[$range])) {
-                continue;
-            }
-
-            $days = $rangeConfig[$range];
-            $fromDate = Carbon::today()->subDays($days - 1);
-
-            $counts = Booking::query()
-                ->selectRaw('DATE(date) as day, COUNT(DISTINCT user_id) as clients')
-                ->whereDate('date', '>=', $fromDate)
-                ->groupBy(DB::raw('DATE(date)'))
-                ->orderBy('day')
-                ->pluck('clients', 'day');
-
-            $labels = [];
-            $series = [];
-            for ($cursor = $fromDate->copy(); $cursor->lte(Carbon::today()); $cursor->addDay()) {
-                $key = $cursor->toDateString();
-                $labels[] = $cursor->format('d.m');
-                $series[] = (int) ($counts[$key] ?? 0);
-            }
-
-            $chartData[$range] = [
-                'label' => $range,
-                'labels' => $labels,
-                'series' => $series,
-            ];
-        }
-
-        return view('admin.users', compact('users', 'chartData', 'filters', 'search'));
+        return view('admin.users', compact('users', 'search'));
     }
 
     public function changeRole(Request $request, User $user)
@@ -136,28 +179,77 @@ class AdminController extends Controller
             'usertype' => $request->usertype,
         ]);
 
-        return back()->with('success', 'User role updated.');
+        return back()->with('success', __('ui.role_updated'));
     }
 
     public function actionPanel()
     {
-        $bookings = Booking::query()
-            ->with(['user', 'procedure'])
-            ->latest()
-            ->take(100)
-            ->get();
+        $category = request('category', 'all');
+        $sort = request('sort', 'newest');
 
-        $loyaltyLogs = LoyaltyScanLog::query()
-            ->with(['user', 'admin'])
-            ->latest()
-            ->take(100)
-            ->get();
+        $events = collect();
 
-        $registrations = User::query()
-            ->latest()
-            ->take(100)
-            ->get();
+        if (in_array($category, ['all', 'registration'], true)) {
+            User::query()->latest()->take(200)->get()->each(function (User $user) use ($events) {
+                $events->push([
+                    'type' => 'registration',
+                    'at' => $user->created_at,
+                    'label' => __('ui.event_registration', [
+                        'name' => $user->fullName(),
+                        'email' => $user->email,
+                    ]),
+                ]);
+            });
+        }
 
-        return view('admin.action-panel', compact('bookings', 'loyaltyLogs', 'registrations'));
+        if (in_array($category, ['all', 'booking'], true)) {
+            Booking::query()->with(['user', 'procedure', 'scheduleProcedure'])->latest()->take(200)->get()->each(function (Booking $booking) use ($events) {
+                $events->push([
+                    'type' => 'booking',
+                    'at' => $booking->created_at,
+                    'label' => __('ui.event_booking', [
+                        'name' => $booking->client_name ?: $booking->user?->fullName(),
+                        'date' => $booking->date?->format('d.m.Y'),
+                        'time' => substr((string) $booking->time, 0, 5),
+                        'procedure' => $booking->getProcedureName(),
+                    ]),
+                ]);
+            });
+        }
+
+        if (in_array($category, ['all', 'loyalty'], true)) {
+            LoyaltyScanLog::query()->with(['user', 'admin'])->latest()->take(200)->get()->each(function (LoyaltyScanLog $log) use ($events) {
+                $events->push([
+                    'type' => 'loyalty',
+                    'at' => $log->created_at,
+                    'label' => __('ui.event_loyalty', [
+                        'name' => $log->user?->fullName(),
+                        'code' => $log->code,
+                        'action' => strtoupper($log->action),
+                    ]),
+                ]);
+            });
+        }
+
+        if (in_array($category, ['all', 'feedback'], true)) {
+            Feedback::query()->with('user')->latest()->take(200)->get()->each(function (Feedback $feedback) use ($events) {
+                $events->push([
+                    'type' => 'feedback',
+                    'at' => $feedback->created_at,
+                    'label' => __('ui.event_feedback', [
+                        'name' => $feedback->user?->fullName(),
+                        'rating' => $feedback->rating,
+                    ]),
+                ]);
+            });
+        }
+
+        $events = $events->sortBy('at', SORT_REGULAR, $sort === 'newest');
+
+        return view('admin.action-panel', [
+            'events' => $events,
+            'category' => $category,
+            'sort' => $sort,
+        ]);
     }
 }

@@ -1,103 +1,72 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-8 max-w-5xl mx-auto">
-    <h1 class="text-4xl font-bold mb-8">{{ __('ui.select_date') }}</h1>
+<div class="p-4 sm:p-8 max-w-5xl mx-auto">
+    <div class="page-header">
+        <span class="brand-badge">{{ __('ui.book_appointment') }}</span>
+        <h1 class="mt-3 font-display">{{ __('ui.select_date') }}</h1>
+    </div>
 
     <div class="card p-6">
         <div class="relative mb-4">
-            <button id="prev-month" type="button" aria-label="Previous month" class="absolute left-0 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border text-lg" style="border-color: rgb(var(--border));">←</button>
+            <button id="prev-month" type="button" class="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-xl border" style="border-color: rgb(var(--border));">←</button>
             <h2 id="month-label" class="text-2xl font-semibold text-center mx-auto"></h2>
-            <button id="next-month" type="button" aria-label="Next month" class="absolute right-0 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl border text-lg" style="border-color: rgb(var(--border));">→</button>
+            <button id="next-month" type="button" class="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-xl border" style="border-color: rgb(var(--border));">→</button>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center text-xs uppercase tracking-wider text-muted">
+        <div class="grid grid-cols-7 gap-2 text-center text-xs uppercase tracking-wider text-muted">
             <div>{{ __('ui.week_mon') }}</div><div>{{ __('ui.week_tue') }}</div><div>{{ __('ui.week_wed') }}</div><div>{{ __('ui.week_thu') }}</div><div>{{ __('ui.week_fri') }}</div><div>{{ __('ui.week_sat') }}</div><div>{{ __('ui.week_sun') }}</div>
         </div>
-        <div id="calendar-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mt-2"></div>
+        <div id="calendar-grid" class="grid grid-cols-7 gap-2 mt-2"></div>
     </div>
+
+    <p class="mt-8 text-center text-sm">
+        <a href="{{ route('terms') }}" class="text-link underline">{{ __('ui.terms_conditions') }}</a>
+    </p>
 
     <div id="booking-modal" class="hidden fixed inset-0 z-40">
         <div id="booking-overlay" class="absolute inset-0 bg-black/50"></div>
         <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-2xl card p-8 relative max-h-[90vh] overflow-auto modal-text">
+            <div class="w-full max-w-2xl card p-6 sm:p-8 relative max-h-[90vh] overflow-auto">
                 <button id="booking-close" type="button" class="absolute top-4 right-4 w-10 h-10 rounded-xl border" style="border-color: rgb(var(--border));">✕</button>
-                <h2 id="selected-date" class="text-2xl font-semibold"></h2>
-                <form method="POST" action="{{ route('book.store') }}" class="space-y-4">
+                <h2 id="selected-date" class="text-2xl font-semibold pr-10"></h2>
+
+                <form method="POST" action="{{ route('book.store') }}" class="space-y-5 mt-4" id="booking-form">
                     @csrf
                     <input type="hidden" name="date" id="form-date">
+                    <input type="hidden" name="procedure_ref" id="procedure-ref" required>
 
                     <div>
-                        <label class="block mt-6 mb-2 font-medium modal-text">{{ __('ui.procedures') }}</label>
-                        <select id="procedure-select" name="procedure_id[]" multiple class="w-full border rounded-2xl p-4 min-h-40 modal-text" style="border-color: rgb(var(--border));">
-                            @forelse($procedures as $proc)
-                                <option value="{{ $proc->id }}" data-name="{{ mb_strtolower($proc->name_lv) }}" data-code="{{ $proc->code }}">
-                                    {{ $proc->getName() }} ({{ $proc->duration }} min)
-                                </option>
-                            @empty
-                                <option value="" disabled>Nav pievienotu procedūru</option>
-                            @endforelse
-                        </select>
-                        <p class="text-xs text-muted mt-2">Ctrl/Command + click, lai izvēlētos vairākas procedūras.</p>
-                        @error('procedure_id')
-                            <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
-                        @enderror
-
-                        <div id="volume-option-wrapper" class="hidden mt-4">
-                            <label class="block mb-2 font-medium modal-text">Izvēlies apjoma veidu</label>
-                            <select id="volume-option-select" name="volume_option" class="w-full border rounded-2xl p-4 modal-text" style="border-color: rgb(var(--border));">
-                                <option value="">Izvēlies apjomu</option>
-                                @foreach($volumeOptions as $option)
-                                    <option value="{{ $option->id }}" data-price="{{ $option->price }}">
-                                        {{ $option->getName() }} ({{ number_format($option->price, 2) }} EUR)
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('volume_option')
-                                <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <div class="mt-6 rounded-3xl border border-zinc-200 dark:border-zinc-700 p-4 bg-[rgb(var(--card))]">
-                            <h3 class="font-semibold mb-3">Procedūru cenrādis</h3>
-                            <div class="space-y-3 text-sm">
-                                @foreach($procedures as $procedure)
-                                    @if($procedure->code !== 'volume')
-                                        <div class="flex items-center justify-between rounded-2xl border p-3" style="border-color: rgb(var(--border));">
-                                            <span>{{ $procedure->getName() }}</span>
-                                            <span class="font-semibold">{{ number_format($procedure->price, 2) }} EUR</span>
-                                        </div>
-                                    @else
-                                        <div class="rounded-2xl border p-3" style="border-color: rgb(var(--border));">
-                                            <div class="font-semibold">{{ $procedure->getName() }}</div>
-                                            <div class="mt-2 space-y-2">
-                                                @foreach($volumeOptions as $volumeOption)
-                                                    <div class="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-zinc-900 p-3" style="border-color: rgb(var(--border));">
-                                                        <span>{{ $volumeOption->getName() }}</span>
-                                                        <span class="font-semibold">{{ number_format($volumeOption->price, 2) }} EUR</span>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                        </div>
+                        <label class="block mb-2 font-medium">{{ __('ui.client_name') }}</label>
+                        <input type="text" name="client_name" value="{{ old('client_name', auth()->user()->name) }}" class="w-full border rounded-2xl p-4" style="border-color: rgb(var(--border));" required>
+                        @error('client_name')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
-                        <label class="block mt-6 mb-2 font-medium modal-text">{{ __('ui.available_times') }}</label>
-                        <select id="time-select" name="time" class="w-full border rounded-2xl p-4 modal-text" style="border-color: rgb(var(--border));" required>
+                        <label class="block mb-2 font-medium">{{ __('ui.procedures') }}</label>
+                        <div id="procedures-table" class="rounded-2xl border overflow-hidden" style="border-color: rgb(var(--border));">
+                            <div class="grid grid-cols-2 table-head text-sm font-semibold">
+                                <div class="p-3">{{ __('ui.procedure') }}</div>
+                                <div class="p-3 text-right">{{ __('ui.price') }}</div>
+                            </div>
+                            <div id="procedures-body" class="divide-y" style="border-color: rgb(var(--border));"></div>
+                        </div>
+                        @error('procedure_ref')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
+                    </div>
+
+                    <div>
+                        <label class="block mb-2 font-medium">{{ __('ui.available_times') }}</label>
+                        <select id="time-select" name="time" class="w-full border rounded-2xl p-4" style="border-color: rgb(var(--border));" required>
                             <option value="">{{ __('ui.choose_date_first') }}</option>
                         </select>
-                        @error('time')
-                            <p class="text-rose-500 text-sm mt-1">{{ $message }}</p>
-                        @enderror
+                        @error('time')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
                     </div>
 
-                    <label class="block mt-6">{{ __('ui.details_optional') }}</label>
-                    <textarea name="details" class="w-full border rounded-3xl p-4" style="border-color: rgb(var(--border));" rows="4"></textarea>
+                    <div>
+                        <label class="block mb-2">{{ __('ui.details_optional') }}</label>
+                        <textarea name="details" class="w-full border rounded-3xl p-4" style="border-color: rgb(var(--border));" rows="4">{{ old('details') }}</textarea>
+                    </div>
 
-                    <button type="submit" class="mt-8 w-full btn-primary py-5 rounded-2xl text-xl">
+                    <button type="submit" class="w-full btn-primary py-4 rounded-2xl text-lg font-semibold">
                         {{ __('ui.confirm_booking') }}
                     </button>
                 </form>
@@ -107,170 +76,126 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const grid = document.getElementById('calendar-grid');
-        const monthLabel = document.getElementById('month-label');
-        const selectedDateLabel = document.getElementById('selected-date');
-        const formDate = document.getElementById('form-date');
-        const bookingModal = document.getElementById('booking-modal');
-        const bookingOverlay = document.getElementById('booking-overlay');
-        const bookingClose = document.getElementById('booking-close');
-        const timeSelect = document.getElementById('time-select');
-        const prevMonthBtn = document.getElementById('prev-month');
-        const nextMonthBtn = document.getElementById('next-month');
-        const monthNames = [
-            @json(__('ui.month_1')),
-            @json(__('ui.month_2')),
-            @json(__('ui.month_3')),
-            @json(__('ui.month_4')),
-            @json(__('ui.month_5')),
-            @json(__('ui.month_6')),
-            @json(__('ui.month_7')),
-            @json(__('ui.month_8')),
-            @json(__('ui.month_9')),
-            @json(__('ui.month_10')),
-            @json(__('ui.month_11')),
-            @json(__('ui.month_12'))
-        ];
-        const selectedDateText = @json(__('ui.selected_date'));
-        const loadingText = @json(__('ui.loading'));
-        const noTimesText = @json(__('ui.no_times'));
-        const chooseTimeText = @json(__('ui.choose_time'));
-        const timesLoadErrorText = @json(__('ui.times_load_error'));
-        const cannotMixText = @json(__('ui.cannot_mix_volume_classic'));
-        let cursorMonth = new Date();
-        cursorMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth(), 1);
+document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.getElementById('calendar-grid');
+    const monthLabel = document.getElementById('month-label');
+    const selectedDateLabel = document.getElementById('selected-date');
+    const formDate = document.getElementById('form-date');
+    const bookingModal = document.getElementById('booking-modal');
+    const bookingOverlay = document.getElementById('booking-overlay');
+    const bookingClose = document.getElementById('booking-close');
+    const timeSelect = document.getElementById('time-select');
+    const proceduresBody = document.getElementById('procedures-body');
+    const procedureRef = document.getElementById('procedure-ref');
+    const monthNames = [@json(__('ui.month_1')),@json(__('ui.month_2')),@json(__('ui.month_3')),@json(__('ui.month_4')),@json(__('ui.month_5')),@json(__('ui.month_6')),@json(__('ui.month_7')),@json(__('ui.month_8')),@json(__('ui.month_9')),@json(__('ui.month_10')),@json(__('ui.month_11')),@json(__('ui.month_12'))];
+    const selectedDateText = @json(__('ui.selected_date'));
+    const loadingText = @json(__('ui.loading'));
+    const noTimesText = @json(__('ui.no_times'));
+    const chooseTimeText = @json(__('ui.choose_time'));
+    const timesLoadErrorText = @json(__('ui.times_load_error'));
+    const noProceduresText = @json(__('ui.no_procedures'));
+    let cursorMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-        function formatDate(value) {
-            const yyyy = value.getFullYear();
-            const mm = String(value.getMonth() + 1).padStart(2, '0');
-            const dd = String(value.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
+    function formatDate(value) {
+        return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-${String(value.getDate()).padStart(2,'0')}`;
+    }
+
+    function formatDateLv(value) {
+        return `${String(value.getDate()).padStart(2,'0')}.${String(value.getMonth()+1).padStart(2,'0')}.${value.getFullYear()}`;
+    }
+
+    function renderProcedures(procedures) {
+        proceduresBody.innerHTML = '';
+        procedureRef.value = '';
+
+        if (!procedures.length) {
+            proceduresBody.innerHTML = `<p class="p-4 text-sm text-muted">${noProceduresText}</p>`;
+            return;
         }
 
-        function formatDateLv(value) {
-            const dd = String(value.getDate()).padStart(2, '0');
-            const mm = String(value.getMonth() + 1).padStart(2, '0');
-            const yyyy = value.getFullYear();
-            return `${dd}.${mm}.${yyyy}`;
-        }
+        procedures.forEach((proc, index) => {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'procedure-row w-full grid grid-cols-2 text-left p-3 transition';
+            row.dataset.ref = proc.ref;
+            row.innerHTML = `<span>${proc.name}</span><span class="text-right font-semibold">${proc.price} EUR</span>`;
+            row.addEventListener('click', () => {
+                document.querySelectorAll('.procedure-row').forEach(r => r.classList.remove('is-selected'));
+                row.classList.add('is-selected');
+                procedureRef.value = proc.ref;
+            });
+            proceduresBody.appendChild(row);
+            if (index === 0) row.click();
+        });
+    }
 
-        async function selectDate(dateString) {
-            const [year, month, day] = dateString.split('-').map(Number);
-            const date = new Date(year, month - 1, day);
-            const formatted = formatDate(date);
+    async function selectDate(dateString) {
+        const [year, month, day] = dateString.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        try {
+            timeSelect.innerHTML = `<option value="">${loadingText}</option>`;
+            const response = await fetch(`{{ route('calendar.schedule') }}?date=${dateString}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin'
+            });
+            if (!response.ok) throw new Error('Failed');
+            const data = await response.json();
 
-            try {
-                timeSelect.innerHTML = `<option value="">${loadingText}</option>`;
-                const response = await fetch(`{{ route('calendar.available-times') }}?date=${formatted}`, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'same-origin'
-                });
+            if (!data.procedures.length) {
+                alert(noProceduresText);
+                return;
+            }
 
-                if (!response.ok) {
-                    throw new Error('Failed to load times');
-                }
+            selectedDateLabel.textContent = `${selectedDateText}: ${formatDateLv(date)}`;
+            formDate.value = dateString;
+            renderProcedures(data.procedures);
 
-                const data = await response.json();
-                timeSelect.innerHTML = '';
-                if (!data.available_times.length) {
-                    bookingModal.classList.add('hidden');
-                    alert(noTimesText);
-                    return;
-                }
-
-                selectedDateLabel.textContent = `${selectedDateText}: ${formatDateLv(date)}`;
-                formDate.value = formatted;
+            timeSelect.innerHTML = '';
+            if (!data.available_times.length) {
+                timeSelect.insertAdjacentHTML('beforeend', `<option value="">${noTimesText}</option>`);
+                timeSelect.disabled = true;
+            } else {
+                timeSelect.disabled = false;
                 timeSelect.insertAdjacentHTML('beforeend', `<option value="">${chooseTimeText}</option>`);
                 data.available_times.forEach(time => {
                     timeSelect.insertAdjacentHTML('beforeend', `<option value="${time}">${time}</option>`);
                 });
-                bookingModal.classList.remove('hidden');
-            } catch (error) {
-                bookingModal.classList.add('hidden');
-                alert(timesLoadErrorText);
             }
+
+            bookingModal.classList.remove('hidden');
+        } catch (e) {
+            alert(timesLoadErrorText);
         }
+    }
 
-        function renderCalendar() {
-            grid.innerHTML = '';
-            monthLabel.textContent = `${monthNames[cursorMonth.getMonth()]} ${cursorMonth.getFullYear()}`;
-
-            const firstDayRaw = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth(), 1).getDay();
-            const firstDay = firstDayRaw === 0 ? 7 : firstDayRaw;
-            const daysInMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth() + 1, 0).getDate();
-            const today = new Date();
-            const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-            for (let i = 1; i < firstDay; i++) {
-                grid.insertAdjacentHTML('beforeend', '<div class="h-12"></div>');
-            }
-
-            for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth(), day);
-                const disabled = date < todayDate;
-                const formatted = formatDate(date);
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.dataset.date = formatted;
-                btn.className = `h-12 rounded-xl border text-sm calendar-day ${disabled ? 'opacity-40 cursor-not-allowed border-zinc-300 dark:border-zinc-700' : 'border-zinc-300 dark:border-zinc-700'}`;
-                btn.textContent = String(day);
-                btn.disabled = disabled;
-                if (!disabled) {
-                    btn.addEventListener('click', () => selectDate(formatted));
-                }
-                grid.appendChild(btn);
-            }
+    function renderCalendar() {
+        grid.innerHTML = '';
+        monthLabel.textContent = `${monthNames[cursorMonth.getMonth()]} ${cursorMonth.getFullYear()}`;
+        const firstDayRaw = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth(), 1).getDay();
+        const firstDay = firstDayRaw === 0 ? 7 : firstDayRaw;
+        const daysInMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth() + 1, 0).getDate();
+        const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+        for (let i = 1; i < firstDay; i++) grid.insertAdjacentHTML('beforeend', '<div class="h-12"></div>');
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth(), day);
+            const disabled = date < today;
+            const formatted = formatDate(date);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `h-12 rounded-xl border text-sm calendar-day ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`;
+            btn.style.borderColor = 'rgb(var(--border))';
+            btn.textContent = String(day);
+            btn.disabled = disabled;
+            if (!disabled) btn.addEventListener('click', () => selectDate(formatted));
+            grid.appendChild(btn);
         }
+    }
 
-        const procedureSelect = document.getElementById('procedure-select');
-        const volumeOptionWrapper = document.getElementById('volume-option-wrapper');
-        const volumeOptionSelect = document.getElementById('volume-option-select');
-
-        const updateVolumeOptionVisibility = () => {
-            const selectedOptions = [...procedureSelect.selectedOptions];
-            const selectedCodes = selectedOptions.map(item => item.dataset.code);
-            const showVolumeOptions = selectedCodes.includes('volume');
-
-            if (volumeOptionWrapper) {
-                volumeOptionWrapper.classList.toggle('hidden', !showVolumeOptions);
-            }
-
-            if (volumeOptionSelect) {
-                volumeOptionSelect.required = showVolumeOptions;
-            }
-        };
-
-        procedureSelect?.addEventListener('change', () => {
-            const selectedOptions = [...procedureSelect.selectedOptions];
-            const names = selectedOptions.map(item => item.dataset.name);
-            if (names.includes('apjoma pieaudzējums') && names.includes('klasiskais pieaudzējums')) {
-                const lastSelected = selectedOptions[selectedOptions.length - 1];
-                if (lastSelected) {
-                    lastSelected.selected = false;
-                }
-                alert(cannotMixText);
-            }
-            updateVolumeOptionVisibility();
-        });
-
-        updateVolumeOptionVisibility();
-
-        prevMonthBtn?.addEventListener('click', () => {
-            cursorMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth() - 1, 1);
-            renderCalendar();
-        });
-        nextMonthBtn?.addEventListener('click', () => {
-            cursorMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth() + 1, 1);
-            renderCalendar();
-        });
-        bookingOverlay?.addEventListener('click', () => bookingModal.classList.add('hidden'));
-        bookingClose?.addEventListener('click', () => bookingModal.classList.add('hidden'));
-
-        renderCalendar();
-    });
+    document.getElementById('prev-month')?.addEventListener('click', () => { cursorMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth()-1, 1); renderCalendar(); });
+    document.getElementById('next-month')?.addEventListener('click', () => { cursorMonth = new Date(cursorMonth.getFullYear(), cursorMonth.getMonth()+1, 1); renderCalendar(); });
+    bookingOverlay?.addEventListener('click', () => bookingModal.classList.add('hidden'));
+    bookingClose?.addEventListener('click', () => bookingModal.classList.add('hidden'));
+    renderCalendar();
+});
 </script>
 @endsection
