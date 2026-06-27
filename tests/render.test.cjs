@@ -72,6 +72,7 @@ test('required deployment files exist', () => {
 
 test('Dockerfile installs PHP extensions and retries composer', () => {
   const dockerfile = read(path.join(ROOT, 'Dockerfile'));
+  assert.match(dockerfile, /libonig-dev/);
   assert.match(dockerfile, /mbstring/);
   assert.match(dockerfile, /composer:2\.8/);
   assert.match(dockerfile, /COMPOSER_MEMORY_LIMIT=-1/);
