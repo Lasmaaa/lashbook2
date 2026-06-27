@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Procedure extends Model
 {
@@ -17,6 +18,11 @@ class Procedure extends Model
         'price',
         'code',
     ];
+
+    public function subtopics(): HasMany
+    {
+        return $this->hasMany(ProcedureSubtopic::class)->orderBy('sort_order')->orderBy('id');
+    }
 
     // Palīdzība valodu izvēlei
     public function getName($lang = null)

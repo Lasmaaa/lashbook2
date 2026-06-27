@@ -113,19 +113,68 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        procedures.forEach((proc, index) => {
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'procedure-row w-full grid grid-cols-2 text-left p-3 transition';
-            row.dataset.ref = proc.ref;
-            row.innerHTML = `<span>${proc.name}</span><span class="text-right font-semibold">${proc.price} EUR</span>`;
-            row.addEventListener('click', () => {
-                document.querySelectorAll('.procedure-row').forEach(r => r.classList.remove('is-selected'));
-                row.classList.add('is-selected');
-                procedureRef.value = proc.ref;
-            });
-            proceduresBody.appendChild(row);
-            if (index === 0) row.click();
+        const selectSubtopicText = @json(__('ui.select_subtopic'));
+
+        procedures.forEach((proc) => {
+            const group = document.createElement('div');
+            group.className = 'procedure-group';
+
+            const hasSubtopics = Array.isArray(proc.subtopics) && proc.subtopics.length > 0;
+            const header = document.createElement('button');
+            header.type = 'button';
+            header.className = `procedure-row procedure-header w-full grid grid-cols-2 text-left p-3 transition ${hasSubtopics ? 'has-subtopics' : ''}`;
+            header.innerHTML = hasSubtopics
+                ? `<span>${proc.name}</span><span class="text-right text-sm text-muted">${selectSubtopicText} ▾</span>`
+                : `<span>${proc.name}</span><span class="text-right font-semibold">${proc.price} EUR</span>`;
+
+            const subtopicsList = document.createElement('div');
+            subtopicsList.className = 'subtopics-list hidden divide-y';
+            subtopicsList.style.borderColor = 'rgb(var(--border))';
+
+            function selectRef(ref, selectedRow) {
+                document.querySelectorAll('.procedure-row.is-selected, .subtopic-row.is-selected').forEach((el) => {
+                    el.classList.remove('is-selected');
+                });
+                selectedRow?.classList.add('is-selected');
+                procedureRef.value = ref;
+            }
+
+            if (hasSubtopics) {
+                proc.subtopics.forEach((sub) => {
+                    const subRow = document.createElement('button');
+                    subRow.type = 'button';
+                    subRow.className = 'subtopic-row w-full grid grid-cols-2 text-left p-3 pl-6 transition';
+                    subRow.dataset.ref = sub.ref;
+                    subRow.innerHTML = `<span>${sub.name}</span><span class="text-right font-semibold">${sub.price} EUR</span>`;
+                    subRow.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        selectRef(sub.ref, subRow);
+                    });
+                    subtopicsList.appendChild(subRow);
+                });
+
+                header.addEventListener('click', () => {
+                    const expanded = !subtopicsList.classList.contains('hidden');
+                    document.querySelectorAll('.procedure-group').forEach((item) => {
+                        if (item !== group) {
+                            item.classList.remove('is-expanded');
+                            item.querySelector('.subtopics-list')?.classList.add('hidden');
+                        }
+                    });
+                    subtopicsList.classList.toggle('hidden', expanded);
+                    group.classList.toggle('is-expanded', !expanded);
+                });
+            } else {
+                header.addEventListener('click', () => selectRef(proc.ref, header));
+            }
+
+            group.appendChild(header);
+            group.appendChild(subtopicsList);
+            proceduresBody.appendChild(group);
+
+            if (!hasSubtopics && proceduresBody.querySelectorAll('.procedure-group').length === 1) {
+                selectRef(proc.ref, header);
+            }
         });
     }
 

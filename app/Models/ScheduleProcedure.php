@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ScheduleProcedure extends Model
 {
@@ -19,6 +20,11 @@ class ScheduleProcedure extends Model
         'date' => 'date',
         'price' => 'decimal:2',
     ];
+
+    public function subtopics(): HasMany
+    {
+        return $this->hasMany(ScheduleProcedureSubtopic::class)->orderBy('sort_order')->orderBy('id');
+    }
 
     public function getName(?string $lang = null): string
     {

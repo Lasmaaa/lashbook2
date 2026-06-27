@@ -76,6 +76,12 @@ class AdminController extends Controller
             'name_en' => $item->name_en,
             'name_ru' => $item->name_ru,
             'price' => (float) $item->price,
+            'subtopics' => collect($item->subtopics)->map(fn ($sub) => [
+                'name_lv' => $sub->name_lv,
+                'name_en' => $sub->name_en,
+                'name_ru' => $sub->name_ru,
+                'price' => (float) $sub->price,
+            ])->values()->all(),
         ])->values();
 
         $times = $this->schedule->getTimesForDate($date)->values();
@@ -96,6 +102,11 @@ class AdminController extends Controller
             'procedures.*.name_en' => 'nullable|string|max:255',
             'procedures.*.name_ru' => 'nullable|string|max:255',
             'procedures.*.price' => 'nullable|numeric|min:0',
+            'procedures.*.subtopics' => 'nullable|array',
+            'procedures.*.subtopics.*.name_lv' => 'nullable|string|max:255',
+            'procedures.*.subtopics.*.name_en' => 'nullable|string|max:255',
+            'procedures.*.subtopics.*.name_ru' => 'nullable|string|max:255',
+            'procedures.*.subtopics.*.price' => 'nullable|numeric|min:0',
             'times' => 'nullable|array',
             'times.*' => 'nullable|string',
         ]);
@@ -128,6 +139,11 @@ class AdminController extends Controller
             'procedures.*.name_en' => 'nullable|string|max:255',
             'procedures.*.name_ru' => 'nullable|string|max:255',
             'procedures.*.price' => 'nullable|numeric|min:0',
+            'procedures.*.subtopics' => 'nullable|array',
+            'procedures.*.subtopics.*.name_lv' => 'nullable|string|max:255',
+            'procedures.*.subtopics.*.name_en' => 'nullable|string|max:255',
+            'procedures.*.subtopics.*.name_ru' => 'nullable|string|max:255',
+            'procedures.*.subtopics.*.price' => 'nullable|numeric|min:0',
             'times' => 'nullable|array',
             'times.*' => 'nullable|string',
         ]);

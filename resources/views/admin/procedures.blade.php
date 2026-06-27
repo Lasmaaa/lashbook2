@@ -37,7 +37,7 @@
                             <h3 class="font-semibold">{{ __('ui.procedures') }}</h3>
                             <button type="button" id="add-procedure" class="text-sm px-3 py-1 rounded-lg btn-violet">+ {{ __('ui.add') }}</button>
                         </div>
-                        <div id="procedures-editor" class="space-y-3"></div>
+                        <div id="procedures-editor" class="space-y-4"></div>
                     </div>
 
                     <div>
@@ -88,48 +88,113 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    function procedureRow(data = {}) {
-        const wrap = document.createElement('div');
-        wrap.className = 'grid grid-cols-12 gap-2 items-center procedure-row';
-        wrap.innerHTML = `
+    function subtopicRow(data = {}) {
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-12 gap-2 items-center subtopic-editor-row subtopic-row-item';
+        row.innerHTML = `
             <input class="col-span-3 rounded-xl border p-2 text-sm" data-field="name_lv" placeholder="LV" value="${data.name_lv || ''}">
             <input class="col-span-3 rounded-xl border p-2 text-sm" data-field="name_en" placeholder="EN" value="${data.name_en || ''}">
             <input class="col-span-3 rounded-xl border p-2 text-sm" data-field="name_ru" placeholder="RU" value="${data.name_ru || ''}">
             <input class="col-span-2 rounded-xl border p-2 text-sm" data-field="price" type="number" step="0.01" placeholder="€" value="${data.price ?? ''}">
-            <button type="button" class="col-span-1 text-error remove-procedure">✕</button>`;
-        wrap.querySelector('.remove-procedure').addEventListener('click', () => {
-            wrap.remove();
+            <button type="button" class="col-span-1 text-error remove-subtopic">✕</button>`;
+        row.querySelector('.remove-subtopic').addEventListener('click', () => {
+            row.remove();
             syncProcedureFieldNames();
         });
-        return wrap;
+        return row;
+    }
+
+    function procedureBlock(data = {}) {
+        const block = document.createElement('div');
+        block.className = 'procedure-block';
+        block.innerHTML = `
+            <div class="grid grid-cols-12 gap-2 items-center procedure-row">
+                <input class="col-span-3 rounded-xl border p-2 text-sm" data-field="name_lv" placeholder="LV" value="">
+                <input class="col-span-3 rounded-xl border p-2 text-sm" data-field="name_en" placeholder="EN" value="">
+                <input class="col-span-3 rounded-xl border p-2 text-sm" data-field="name_ru" placeholder="RU" value="">
+                <input class="col-span-2 rounded-xl border p-2 text-sm" data-field="price" type="number" step="0.01" placeholder="€" value="">
+                <button type="button" class="col-span-1 text-error remove-procedure">✕</button>
+            </div>
+            <div class="subtopics-editor">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium">{{ __('ui.subtopics') }}</span>
+                    <button type="button" class="text-xs px-2 py-1 rounded-lg btn-violet add-subtopic">+ {{ __('ui.add_subtopic') }}</button>
+                </div>
+                <div class="subtopics-list space-y-2"></div>
+            </div>`;
+
+        ['name_lv', 'name_en', 'name_ru', 'price'].forEach((field) => {
+            const input = block.querySelector(`[data-field="${field}"]`);
+            if (input) {
+                input.value = data[field] ?? '';
+            }
+        });
+
+        block.querySelector('.remove-procedure').addEventListener('click', () => {
+            block.remove();
+            syncProcedureFieldNames();
+        });
+
+        const subtopicsList = block.querySelector('.subtopics-list');
+        (data.subtopics || []).forEach((subtopic) => subtopicsList.appendChild(subtopicRow(subtopic)));
+
+        block.querySelector('.add-subtopic').addEventListener('click', () => {
+            subtopicsList.appendChild(subtopicRow());
+            syncProcedureFieldNames();
+        });
+
+        return block;
     }
 
     function syncProcedureFieldNames() {
-        proceduresEditor.querySelectorAll('.procedure-row').forEach((row, index) => {
-            row.querySelectorAll('[data-field]').forEach((input) => {
-                input.name = `procedures[${index}][${input.dataset.field}]`;
+        proceduresEditor.querySelectorAll('.procedure-block').forEach((block, procedureIndex) => {
+            block.querySelectorAll('.procedure-row [data-field]').forEach((input) => {
+                input.name = `procedures[${procedureIndex}][${input.dataset.field}]`;
+            });
+
+            block.querySelectorAll('.subtopic-row-item').forEach((row, subtopicIndex) => {
+                row.querySelectorAll('[data-field]').forEach((input) => {
+                    input.name = `procedures[${procedureIndex}][subtopics][${subtopicIndex}][${input.dataset.field}]`;
+                });
             });
         });
     }
 
     function readProceduresFromEditor() {
-        return [...proceduresEditor.querySelectorAll('.procedure-row')].map((row) => ({
-            name_lv: row.querySelector('[data-field="name_lv"]')?.value || '',
-            name_en: row.querySelector('[data-field="name_en"]')?.value || '',
-            name_ru: row.querySelector('[data-field="name_ru"]')?.value || '',
-            price: row.querySelector('[data-field="price"]')?.value || '',
+        return [...proceduresEditor.querySelectorAll('.procedure-block')].map((block) => ({
+            name_lv: block.querySelector('.procedure-row [data-field="name_lv"]')?.value || '',
+            name_en: block.querySelector('.procedure-row [data-field="name_en"]')?.value || '',
+            name_ru: block.querySelector('.procedure-row [data-field="name_ru"]')?.value || '',
+            price: block.querySelector('.procedure-row [data-field="price"]')?.value || '',
+            subtopics: [...block.querySelectorAll('.subtopic-row-item')].map((row) => ({
+                name_lv: row.querySelector('[data-field="name_lv"]')?.value || '',
+                name_en: row.querySelector('[data-field="name_en"]')?.value || '',
+                name_ru: row.querySelector('[data-field="name_ru"]')?.value || '',
+                price: row.querySelector('[data-field="price"]')?.value || '',
+            })),
         }));
     }
 
     function appendProcedureFields(form, procedures, className = 'copied-field') {
-        procedures.forEach((procedure, index) => {
+        procedures.forEach((procedure, procedureIndex) => {
             ['name_lv', 'name_en', 'name_ru', 'price'].forEach((field) => {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.className = className;
-                input.name = `procedures[${index}][${field}]`;
+                input.name = `procedures[${procedureIndex}][${field}]`;
                 input.value = procedure[field] ?? '';
                 form.appendChild(input);
+            });
+
+            (procedure.subtopics || []).forEach((subtopic, subtopicIndex) => {
+                ['name_lv', 'name_en', 'name_ru', 'price'].forEach((field) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.className = className;
+                    input.name = `procedures[${procedureIndex}][subtopics][${subtopicIndex}][${field}]`;
+                    input.value = subtopic[field] ?? '';
+                    form.appendChild(input);
+                });
             });
         });
     }
@@ -153,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
 
         proceduresEditor.innerHTML = '';
-        (data.procedures.length ? data.procedures : [{ name_lv: '', name_en: '', name_ru: '', price: '' }]).forEach(p => proceduresEditor.appendChild(procedureRow(p)));
+        (data.procedures.length ? data.procedures : [{ name_lv: '', name_en: '', name_ru: '', price: '', subtopics: [] }]).forEach(p => proceduresEditor.appendChild(procedureBlock(p)));
         syncProcedureFieldNames();
 
         timesEditor.innerHTML = '';
@@ -186,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('add-procedure')?.addEventListener('click', () => {
-        proceduresEditor.appendChild(procedureRow());
+        proceduresEditor.appendChild(procedureBlock());
         syncProcedureFieldNames();
     });
     document.getElementById('add-time')?.addEventListener('click', () => timesEditor.appendChild(timeChip()));

@@ -18,6 +18,7 @@ class ScheduleService
     public function getProceduresForDate(string $date): Collection
     {
         $scheduled = ScheduleProcedure::query()
+            ->with('subtopics')
             ->whereDate('date', $date)
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -30,10 +31,18 @@ class ScheduleService
                 'name_en' => $item->name_en,
                 'name_ru' => $item->name_ru,
                 'price' => $item->price,
+                'subtopics' => $item->subtopics->map(fn ($sub) => (object) [
+                    'ref' => 'sched-sub-' . $sub->id,
+                    'name_lv' => $sub->name_lv,
+                    'name_en' => $sub->name_en,
+                    'name_ru' => $sub->name_ru,
+                    'price' => $sub->price,
+                ])->values()->all(),
             ]);
         }
 
         return Procedure::query()
+            ->with('subtopics')
             ->whereNotIn('code', ['volume_2d_3d', 'volume_4d_plus'])
             ->orderBy('id')
             ->get()
@@ -43,6 +52,13 @@ class ScheduleService
                 'name_en' => $procedure->name_en,
                 'name_ru' => $procedure->name_ru,
                 'price' => $procedure->price,
+                'subtopics' => $procedure->subtopics->map(fn ($sub) => (object) [
+                    'ref' => 'proc-sub-' . $sub->id,
+                    'name_lv' => $sub->name_lv,
+                    'name_en' => $sub->name_en,
+                    'name_ru' => $sub->name_ru,
+                    'price' => $sub->price,
+                ])->values()->all(),
             ]);
     }
 
@@ -82,7 +98,7 @@ class ScheduleService
                 continue;
             }
 
-            ScheduleProcedure::create([
+            $scheduleProcedure = ScheduleProcedure::create([
                 'date' => $date,
                 'name_lv' => $nameLv ?: $primaryName,
                 'name_en' => $nameEn ?: $primaryName,
@@ -90,6 +106,8 @@ class ScheduleService
                 'price' => $procedure['price'] ?? 0,
                 'sort_order' => $index,
             ]);
+
+            $this->saveSubtopics($scheduleProcedure, $procedure['subtopics'] ?? []);
         }
 
         foreach ($times as $time) {
@@ -106,6 +124,7 @@ class ScheduleService
     public function applyToAllDates(string $sourceDate, Carbon $from, Carbon $to): int
     {
         $procedures = ScheduleProcedure::whereDate('date', $sourceDate)
+            ->with('subtopics')
             ->orderBy('sort_order')
             ->get()
             ->map(fn (ScheduleProcedure $item) => [
@@ -113,6 +132,12 @@ class ScheduleService
                 'name_en' => $item->name_en,
                 'name_ru' => $item->name_ru,
                 'price' => $item->price,
+                'subtopics' => $item->subtopics->map(fn ($sub) => [
+                    'name_lv' => $sub->name_lv,
+                    'name_en' => $sub->name_en,
+                    'name_ru' => $sub->name_ru,
+                    'price' => $sub->price,
+                ])->all(),
             ])
             ->all();
 
@@ -129,6 +154,12 @@ class ScheduleService
                     'name_en' => $item->name_en,
                     'name_ru' => $item->name_ru,
                     'price' => $item->price,
+                    'subtopics' => collect($item->subtopics)->map(fn ($sub) => [
+                        'name_lv' => $sub->name_lv,
+                        'name_en' => $sub->name_en,
+                        'name_ru' => $sub->name_ru,
+                        'price' => $sub->price,
+                    ])->all(),
                 ])
                 ->all();
 
@@ -156,5 +187,27 @@ class ScheduleService
         }
 
         return sprintf('%02d:%02d', (int) $parts[0], (int) $parts[1]);
+    }
+
+    private function saveSubtopics(ScheduleProcedure $scheduleProcedure, array $subtopics): void
+    {
+        foreach ($subtopics as $subIndex => $subtopic) {
+            $nameLv = trim((string) ($subtopic['name_lv'] ?? ''));
+            $nameEn = trim((string) ($subtopic['name_en'] ?? ''));
+            $nameRu = trim((string) ($subtopic['name_ru'] ?? ''));
+
+            $primaryName = $nameLv ?: $nameEn ?: $nameRu;
+            if ($primaryName === '') {
+                continue;
+            }
+
+            $scheduleProcedure->subtopics()->create([
+                'name_lv' => $nameLv ?: $primaryName,
+                'name_en' => $nameEn ?: $primaryName,
+                'name_ru' => $nameRu ?: $primaryName,
+                'price' => $subtopic['price'] ?? 0,
+                'sort_order' => $subIndex,
+            ]);
+        }
     }
 }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Procedure;
+use App\Models\ProcedureSubtopic;
 use App\Models\ScheduleProcedure;
+use App\Models\ScheduleProcedureSubtopic;
 use App\Services\ScheduleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +19,7 @@ class BookingController extends Controller
 
     public function index()
     {
-        $nextBooking = Booking::with(['procedure', 'scheduleProcedure'])
+        $nextBooking = Booking::with(['procedure', 'scheduleProcedure', 'scheduleSubtopic', 'procedureSubtopic'])
             ->where('user_id', auth()->id())
             ->where('date', '>=', now()->toDateString())
             ->orderBy('date')
@@ -49,15 +51,27 @@ class BookingController extends Controller
 
         $procedures = $this->schedule->getProceduresForDate($date)->map(function ($procedure) {
             $lang = app()->getLocale();
+            $localizedName = match ($lang) {
+                'en' => $procedure->name_en,
+                'ru' => $procedure->name_ru,
+                default => $procedure->name_lv,
+            };
 
             return [
                 'ref' => $procedure->ref,
-                'name' => match ($lang) {
-                    'en' => $procedure->name_en,
-                    'ru' => $procedure->name_ru,
-                    default => $procedure->name_lv,
-                },
+                'name' => $localizedName,
                 'price' => number_format((float) $procedure->price, 2),
+                'subtopics' => collect($procedure->subtopics)->map(function ($subtopic) use ($lang) {
+                    return [
+                        'ref' => $subtopic->ref,
+                        'name' => match ($lang) {
+                            'en' => $subtopic->name_en,
+                            'ru' => $subtopic->name_ru,
+                            default => $subtopic->name_lv,
+                        },
+                        'price' => number_format((float) $subtopic->price, 2),
+                    ];
+                })->values()->all(),
             ];
         });
 
@@ -102,13 +116,28 @@ class BookingController extends Controller
             'details' => $request->details,
         ];
 
-        if (str_starts_with($procedureRef, 'sched-')) {
+        if (str_starts_with($procedureRef, 'sched-sub-')) {
+            $subtopic = ScheduleProcedureSubtopic::with('scheduleProcedure')->find((int) str_replace('sched-sub-', '', $procedureRef));
+            if (!$subtopic) {
+                return back()->withErrors(['procedure_ref' => __('ui.invalid_procedure')])->withInput();
+            }
+            $bookingData['schedule_subtopic_id'] = $subtopic->id;
+            $bookingData['schedule_procedure_id'] = $subtopic->schedule_procedure_id;
+            $bookingData['procedure_id'] = $this->fallbackProcedureId();
+        } elseif (str_starts_with($procedureRef, 'proc-sub-')) {
+            $subtopic = ProcedureSubtopic::with('procedure')->find((int) str_replace('proc-sub-', '', $procedureRef));
+            if (!$subtopic) {
+                return back()->withErrors(['procedure_ref' => __('ui.invalid_procedure')])->withInput();
+            }
+            $bookingData['procedure_subtopic_id'] = $subtopic->id;
+            $bookingData['procedure_id'] = $subtopic->procedure_id;
+        } elseif (str_starts_with($procedureRef, 'sched-')) {
             $scheduleProcedure = ScheduleProcedure::find((int) str_replace('sched-', '', $procedureRef));
             if (!$scheduleProcedure) {
                 return back()->withErrors(['procedure_ref' => __('ui.invalid_procedure')])->withInput();
             }
             $bookingData['schedule_procedure_id'] = $scheduleProcedure->id;
-            $bookingData['procedure_id'] = Procedure::query()->value('id');
+            $bookingData['procedure_id'] = $this->fallbackProcedureId();
         } elseif (str_starts_with($procedureRef, 'proc-')) {
             $procedure = Procedure::find((int) str_replace('proc-', '', $procedureRef));
             if (!$procedure) {
@@ -123,5 +152,22 @@ class BookingController extends Controller
 
         return redirect()->route('user.index')
             ->with('success', __('ui.booking_success'));
+    }
+
+    private function fallbackProcedureId(): int
+    {
+        $existingId = Procedure::query()->value('id');
+        if ($existingId) {
+            return (int) $existingId;
+        }
+
+        return Procedure::create([
+            'name_lv' => 'Cita',
+            'name_en' => 'Other',
+            'name_ru' => 'Другое',
+            'duration' => 60,
+            'price' => 0,
+            'code' => 'fallback',
+        ])->id;
     }
 }
